@@ -1,0 +1,9 @@
+var x = 1;
+var y = 1;
+var k = 10;
+while (k > 0)
+    var temp = y;
+    y = x;
+    x = y + temp;
+    k = k - 1;
+return x;
