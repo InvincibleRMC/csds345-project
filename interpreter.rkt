@@ -87,7 +87,7 @@
 
 (define check-for-binding
   (lambda (name state)
-    (contains? (car state))))
+    (contains? name (get-state-names state))))
 
 (define m-state-math-operators
   (lambda (statement state)
@@ -101,33 +101,29 @@
   (lambda (statement state)
     state))
 
-(define m-state-control
-  (lambda (statement state)
-    state))
-
 (define get-var-name
   (lambda (statement)
     (cadr statement)))
 
 (define get-var-value
-  (lambda (statement)
+  (lambda (statement state)
     (if (null? (cdr statement))
         NULL
-        (m-number (cadr statement)))))
+        (m-number (caddr statement) state))))
 
 (define m-state-var
   (lambda (statement state)
-    (if (check-for-binding (get-var-name statement))
+    (if (check-for-binding (get-var-name statement) state)
         (error "variable already declared")
-        (add-binding (get-var-name statement) (get-var-value statement) state))))
+        (add-binding (get-var-name statement) (get-var-value statement state) state))))
 
-#|
+
 (define m-state-control
   (lambda (statement state)
     (cond
-      ((eq? (get-statment-type statement) 'var) 
-    ))
-|#
+      ((eq? (get-statement-type statement) 'var) (m-state-var statement state))
+    )))
+
 
 ; TODO
 (define m-number
