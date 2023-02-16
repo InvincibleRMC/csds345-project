@@ -1,53 +1,12 @@
 #lang racket
 (require "interpreter.rkt")
 
-
-;--------------------
-; Easy Test Cases
-;--------------------
-#|
-(load "test-cases/given-tests/easy-tests/test1.txt")
-(load "test-cases/given-tests/easy-tests/test2.txt")
-(load "test-cases/given-tests/easy-tests/test3.txt")
-(load "test-cases/given-tests/easy-tests/test4.txt")
-(load "test-cases/given-tests/easy-tests/test5.txt")
-(load "test-cases/given-tests/easy-tests/test6.txt")
-(load "test-cases/given-tests/easy-tests/test7.txt")
-(load "test-cases/given-tests/easy-tests/test8.txt")
-(load "test-cases/given-tests/easy-tests/test9.txt")
-(load "test-cases/given-tests/easy-tests/test10.txt")
-(load "test-cases/given-tests/easy-tests/test11.txt")
-(load "test-cases/given-tests/easy-tests/test12.txt")
-(load "test-cases/given-tests/easy-tests/test13.txt")
-(load "test-cases/given-tests/easy-tests/test14.txt")
-(load "test-cases/given-tests/easy-tests/test15.txt")
-(load "test-cases/given-tests/easy-tests/test16.txt")
-(load "test-cases/given-tests/easy-tests/test17.txt")
-(load "test-cases/given-tests/easy-tests/test18.txt")
-(load "test-cases/given-tests/easy-tests/test19.txt")
-(load "test-cases/given-tests/easy-tests/test20.txt")
-
-
-;--------------------
-; Hard Test Cases
-;--------------------
-(load "test-cases/given-tests/hard-tests/test21.txt")
-(load "test-cases/given-tests/hard-tests/test22.txt")
-(load "test-cases/given-tests/hard-tests/test23.txt")
-(load "test-cases/given-tests/hard-tests/test24.txt")
-(load "test-cases/given-tests/hard-tests/test25.txt")
-(load "test-cases/given-tests/hard-tests/test26.txt")
-(load "test-cases/given-tests/hard-tests/test27.txt")
-(load "test-cases/given-tests/hard-tests/test28.txt")
-|#
-
-;--------------------
-; User-Defined Test Cases
-;--------------------
-;(load "test-cases/our-tests/test29.txt")
-
-
-(define assert (lambda (filename constraint) (equal? (interpret filename) constraint)))
+(define assert (lambda (filename constraint)
+                 (display (string-append (substring filename 34 38) " " (substring filename 38 39)
+                                         (if (number? (string->number (substring filename 39 40)))
+                                             (substring filename 39 40)
+                                             "")))
+                          (equal? (interpret filename) constraint)))
 ;--------------------
 ; Easy Tests
 ;--------------------
