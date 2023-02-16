@@ -125,6 +125,7 @@
     (cond
       ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state))
       ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
+      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state))
     )))
 
 (define get-var-name
@@ -152,6 +153,21 @@
 (define m-state-return
   (lambda (statement state)
     (add-binding RETURN (get-return-value statement state) state)))
+
+; assign statement handler
+(define m-state-assign
+  (lambda (statement state)
+    (if (check-for-binding (get-assign-name statement) state)
+        (add-binding (get-assign-name statement) (get-assign-value statement) state)
+        (error "Cannot assign to a variable that has not been declared"))))
+
+(define get-assign-name
+  (lambda (statement)
+    (cadr statement)))
+
+(define get-assign-value
+  (lambda (statement)
+    (caddr statement)))
 
 ; === Numerical expresion evaluator
 ; TODO
