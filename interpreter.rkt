@@ -26,7 +26,7 @@
 
 (define get-state-values
   (lambda (state)
-    (cadr (state))))
+    (cadr state)))
 
 (define make-state
   (lambda (names values)
@@ -36,7 +36,7 @@
   (lambda (name value state return)
     (cond
       ((null? (get-state-names state))          (return (make-state (list name) (list value))))
-      ((eq? (car (get-state-names state)) name) (make-state (get-state-names state) (cons (value (cdr (get-state-values state))))))
+      ((eq? (car (get-state-names state)) name) (return (make-state (get-state-names state) (cons value (cdr (get-state-values state))))))
       (else                                     (add-binding-cps name value (make-state (cdr (get-state-names state)) (cdr (get-state-values state)))
                                                              (lambda (v) (return (make-state
                                                                                   (cons (car (get-state-names  state)) (get-state-names  v))
