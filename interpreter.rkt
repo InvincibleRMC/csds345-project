@@ -8,7 +8,8 @@
 
 (define NULL 'null)
 
-
+; === Main ===
+; Interpreter entry point. Reads a file as a program and interprets it, returning the return value of the program
 (provide interpret)
 (define interpret
   (lambda (filename)
@@ -18,7 +19,7 @@
   (interpreter-helper (cdr statementlist) (m-state (car statementlist) state)))
   
 
-
+; === State helper functions ===
 (define contains?
   (lambda (element list)
     (cond
@@ -38,6 +39,16 @@
   (lambda (names values)
     (list names values)))
 
+; Check whether a name is bound
+(define check-for-binding
+  (lambda (name state)
+    (contains? name (get-state-names state))))
+
+; Add a name-value pair binding to the state, or replce the value if name is already bound
+(define add-binding
+  (lambda (name value state)
+    (add-binding-cps name value state (lambda (v) v))))
+
 (define add-binding-cps
   (lambda (name value state return)
     (cond
@@ -47,11 +58,6 @@
                                                              (lambda (v) (return (make-state
                                                                                   (cons (car (get-state-names  state)) (get-state-names  v))
                                                                                   (cons (car (get-state-values state)) (get-state-values v))))))))))
-
-(define add-binding
-  (lambda (name value state)
-    (add-binding-cps name value state (lambda (v) v))))
-    
 
 ; Get the keyword the defines the statment type from a statment represented by a list
 (define get-statement-type
@@ -74,6 +80,8 @@
   (lambda (statement)
     (caddr statement)))
 
+; === State handler ===
+; Modify the state by a statement
 (define m-state
   (lambda (statement state)
     (cond
@@ -84,28 +92,28 @@
       ((contains? (get-statement-type statement) keyword-control)        (m-state-control        statement state))
       (else                                                              (error "Unknown keyword")))))
 
-#|
-(define m-state-math-operators
-  (lambda (statement state)
-    (cond
-      ((eq? (get-operator statment) '+) (
-|#
-
-(define check-for-binding
-  (lambda (name state)
-    (contains? name (get-state-names state))))
-
+; === Numerical operator handlers ===
 (define m-state-math-operators
   (lambda (statement state)
     state))
 
+; === Boolean operator handlers ===
 (define m-state-bool-operators
   (lambda (statement state)
     state))
 
+; === Comparison operator handlers ===
 (define m-state-comparators
   (lambda (statement state)
     state))
+
+; === Control flow statement handlers ===
+(define m-state-control
+  (lambda (statement state)
+    (cond
+      ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state))
+      ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
+    )))
 
 (define get-var-name
   (lambda (statement)
@@ -113,7 +121,7 @@
 
 (define get-var-value
   (lambda (statement state)
-    (if (null? (cdr statement))
+    (if (null? (cddr statement))
         NULL
         (m-number (caddr statement) state))))
 
@@ -122,18 +130,14 @@
     (if (check-for-binding (get-var-name statement) state)
         (error "variable already declared")
         (add-binding (get-var-name statement) (get-var-value statement state) state))))
+
 ; TODO
 (define (m-state-return statement state)
   (if (check-for-binding)
       #f
       #f))
 
-(define m-state-control
-  (lambda (statement state)
-    (cond
-      ((eq? (get-statement-type statement) 'var) (m-state-var statement state))
-      ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
-    )))
+
 
 
 ; TODO
