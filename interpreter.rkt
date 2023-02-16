@@ -77,12 +77,12 @@
 (define m-state
   (lambda (statement state)
     (cond
-      ((null? statement)                                          state)
-      ((contains? (get-operator statement) keyword-math-operators) (m-state-math-operators statement state))
-      ((contains? (get-operator statement) keyword-bool-operators) (m-state-bool-operators statement state))
-      ((contains? (get-operator statement) keyword-comparators)    (m-state-comparators    statement state))
-      ((contains? (get-operator statement) keyword-control)        (m-state-control        statement state))
-      (else (error "Unknown keyword")))))
+      ((null? statement)                                                 state)
+      ((contains? (get-statement-type statement) keyword-math-operators) (m-state-math-operators statement state))
+      ((contains? (get-statement-type statement) keyword-bool-operators) (m-state-bool-operators statement state))
+      ((contains? (get-statement-type statement) keyword-comparators)    (m-state-comparators    statement state))
+      ((contains? (get-statement-type statement) keyword-control)        (m-state-control        statement state))
+      (else                                                              (error "Unknown keyword")))))
 
 #|
 (define m-state-math-operators
