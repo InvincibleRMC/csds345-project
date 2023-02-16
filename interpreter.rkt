@@ -7,6 +7,7 @@
 (define keyword-control        '(var = return if while))
 
 (define NULL 'null)
+(define RETURN 'return)
 
 ; === Main ===
 ; Interpreter entry point. Reads a file as a program and interprets it, returning the return value of the program
@@ -15,8 +16,11 @@
   (lambda (filename)
     (interpreter-helper (parser filename) '(() ()))))
 
-(define (interpreter-helper statementlist state)
-  (interpreter-helper (cdr statementlist) (m-state (car statementlist) state)))
+(define interpreter-helper
+  (lambda (statementlist state)
+    (if (check-for-binding RETURN state)
+        (get-binding-value RETURN state)
+        (interpreter-helper (cdr statementlist) (m-state (car statementlist) state)))))
   
 
 ; === State helper functions ===
@@ -43,6 +47,14 @@
 (define check-for-binding
   (lambda (name state)
     (contains? name (get-state-names state))))
+
+; Find the value for a bound name
+(define get-binding-value
+  (lambda (name state)
+    (cond
+      ((null? state)                            (error "Name not bound"))
+      ((eq? (car (get-state-names state)) name) (car (get-statement-values state)))
+      (else                                     (get-binding-value name (make-state (cdr (get-state-names state)) (cdr (get-state-values state))))))))
 
 ; Add a name-value pair binding to the state, or replce the value if name is already bound
 (define add-binding
@@ -125,24 +137,32 @@
         NULL
         (m-number (caddr statement) state))))
 
+; var statement handler
 (define m-state-var
   (lambda (statement state)
     (if (check-for-binding (get-var-name statement) state)
         (error "variable already declared")
         (add-binding (get-var-name statement) (get-var-value statement state) state))))
 
-; TODO
-(define (m-state-return statement state)
-  (if (check-for-binding)
-      #f
-      #f))
+(define get-return-value
+  (lambda (statement state)
+    (m-number (cadr statement) state)))
 
+; return statement handler
+(define m-state-return
+  (lambda (statement state)
+    (add-binding RETURN (get-return-value statement state))))
 
-
-
+; === Numerical expresion evaluator
 ; TODO
 (define m-number
   (lambda (expression state)
     (cond
       ((number? expression) expression)
       (else 0))))
+
+; === Boolearn expression evaluator
+; TODO
+(define m-bool
+  (lambda (expression state)
+    #f))

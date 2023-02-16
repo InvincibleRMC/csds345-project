@@ -1,1 +1,2 @@
-return w + x + y;
+var x = 1;
+return 10;
