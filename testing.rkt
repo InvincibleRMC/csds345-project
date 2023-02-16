@@ -37,17 +37,17 @@
  ;--------------------
  ; Hard Tests
  ;--------------------
-(assert "test-cases/given-tests/easy-tests/test21.txt" 30)
-(assert "test-cases/given-tests/easy-tests/test22.txt" 11)
-(assert "test-cases/given-tests/easy-tests/test23.txt" 1106)
-(assert "test-cases/given-tests/easy-tests/test24.txt" 12)
-(assert "test-cases/given-tests/easy-tests/test25.txt" 16)
-(assert "test-cases/given-tests/easy-tests/test26.txt" 72)
-(assert "test-cases/given-tests/easy-tests/test27.txt" 21)
-(assert "test-cases/given-tests/easy-tests/test28.txt" 164)
+(assert "test-cases/given-tests/hard-tests/test21.txt" 30)
+(assert "test-cases/given-tests/hard-tests/test22.txt" 11)
+(assert "test-cases/given-tests/hard-tests/test23.txt" 1106)
+(assert "test-cases/given-tests/hard-tests/test24.txt" 12)
+(assert "test-cases/given-tests/hard-tests/test25.txt" 16)
+(assert "test-cases/given-tests/hard-tests/test26.txt" 72)
+(assert "test-cases/given-tests/hard-tests/test27.txt" 21)
+(assert "test-cases/given-tests/hard-tests/test28.txt" 164)
 
 
  ;--------------------
  ; Our Tests
  ;--------------------
-(assert "test-cases/given-tests/easy-tests/test29.txt" true)
+(assert "test-cases/our-tests/test29.txt" true)
