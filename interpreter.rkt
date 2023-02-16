@@ -53,7 +53,7 @@
   (lambda (name state)
     (cond
       ((null? state)                            (error "Name not bound"))
-      ((eq? (car (get-state-names state)) name) (car (get-statement-values state)))
+      ((eq? (car (get-state-names state)) name) (car (get-state-values state)))
       (else                                     (get-binding-value name (make-state (cdr (get-state-names state)) (cdr (get-state-values state))))))))
 
 ; Add a name-value pair binding to the state, or replce the value if name is already bound
@@ -104,22 +104,22 @@
       ((contains? (get-statement-type statement) keyword-control)        (m-state-control        statement state))
       (else                                                              (error "Unknown keyword")))))
 
-; === Numerical operator handlers ===
+; === Numerical operator state handlers ===
 (define m-state-math-operators
   (lambda (statement state)
     state))
 
-; === Boolean operator handlers ===
+; === Boolean operator state handlers ===
 (define m-state-bool-operators
   (lambda (statement state)
     state))
 
-; === Comparison operator handlers ===
+; === Comparison operator state handlers ===
 (define m-state-comparators
   (lambda (statement state)
     state))
 
-; === Control flow statement handlers ===
+; === Control flow state handlers ===
 (define m-state-control
   (lambda (statement state)
     (cond
@@ -151,7 +151,7 @@
 ; return statement handler
 (define m-state-return
   (lambda (statement state)
-    (add-binding RETURN (get-return-value statement state))))
+    (add-binding RETURN (get-return-value statement state) state)))
 
 ; === Numerical expresion evaluator
 ; TODO
