@@ -9,9 +9,15 @@
 (define NULL 'null)
 
 
+(provide interpret)
 (define interpret
   (lambda (filename)
-    (parser filename)))
+    (interpreter-helper (parser filename) '(() ()))))
+
+(define (interpreter-helper statementlist state)
+  (interpreter-helper (cdr statementlist) (m-state (car statementlist) state)))
+  
+
 
 (define contains?
   (lambda (element list)
@@ -116,12 +122,17 @@
     (if (check-for-binding (get-var-name statement) state)
         (error "variable already declared")
         (add-binding (get-var-name statement) (get-var-value statement state) state))))
-
+; TODO
+(define (m-state-return statement state)
+  (if (check-for-binding)
+      #f
+      #f))
 
 (define m-state-control
   (lambda (statement state)
     (cond
       ((eq? (get-statement-type statement) 'var) (m-state-var statement state))
+      ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
     )))
 
 
