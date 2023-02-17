@@ -300,11 +300,8 @@
   (lambda (expression state)
     (cond
       ((number? expression)                                         (m-number expression state))
-      ((bool? expression)                                           (m-bool   expression state))
       ((contains? (get-operator expression) keyword-math-operators) (m-number expression state))
-      ((contains? (get-operator expression) keyword-bool-operators) (m-bool   expression state))
-      ((contains? (get-operator expression) keyword-comparators)    (m-bool   expression state))
-      (else                                                         (error "dun goof")))))
+      (else                                                         (m-bool   expression state)))))
 
 ; === Numerical expresion evaluator
 ; TODO
@@ -321,4 +318,6 @@
     (cond
       ((equal? expression 'true)  'true)
       ((equal? expression 'false) 'false)
-      (else                       #f))))
+      ((contains? (get-operator expression) keyword-bool-operators) (m-state-bool-operators   expression state))
+      ((contains? (get-operator expression) keyword-comparators)    (m-state-comparators      expression state))
+      (else                                                         (error "This isn't a boolean expression")))))
