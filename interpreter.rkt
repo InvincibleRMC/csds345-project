@@ -137,7 +137,49 @@
 ; === Numerical operator state handlers ===
 (define m-state-math-operators
   (lambda (statement state)
-    state))
+    (cond
+      ((eq? (get-statement-type statement) '+) (m-state-addition       statement state))
+      ((eq? (get-statement-type statement) '-) (m-state-subtraction    statement state))
+      ((eq? (get-statement-type statement) '*) (m-state-multiplication statement state))
+      ((eq? (get-statement-type statement) '/) (m-state-division       statement state))
+      ((eq? (get-statement-type statement) '%) (m-state-modulus        statement state)))))
+
+; addition statement handler
+(define m-state-addition
+  (lambda (statement state)
+    (+
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
+
+; subtraction statement handler
+(define m-state-subtraction
+  (lambda (statement state)
+    (if (null? (get-second-operand   statement))
+        (- 0 (evaluate-first-operand statement state))
+        (-
+         (evaluate-first-operand     statement state)
+         (evaluate-second-operand    statement state)))))
+
+; multiplication statement handler
+(define m-state-multiplication
+  (lambda (statement state)
+    (*
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
+
+; division statement handler
+(define m-state-division
+  (lambda (statement state)
+    (/
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
+
+; modulus statement handler
+(define m-state-modulus
+  (lambda (statement state)
+    (modulo
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
 
 ; === Boolean operator state handlers ===
 (define m-state-bool-operators
@@ -153,8 +195,7 @@
       ((eq? (get-statement-type statement) '<)  (m-state-less-than           statement state))
       ((eq? (get-statement-type statement) '>)  (m-state-greater-than        statement state))
       ((eq? (get-statement-type statement) '<=) (m-state-less-than-equals    statement state))
-      ((eq? (get-statement-type statement) '>=) (m-state-greater-than-equals statement state))
-    )))
+      ((eq? (get-statement-type statement) '>=) (m-state-greater-than-equals statement state)))))
 
 ; equals statement handler
 (define m-state-equals
@@ -225,8 +266,7 @@
     (cond
       ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state))
       ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
-      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state))
-    )))
+      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state)))))
 
 (define get-var-name
   (lambda (statement)
@@ -280,16 +320,16 @@
       (else                                                         (m-bool   expression state)))))
 
 ; === Numerical expresion evaluator
-; TODO
 (define m-number
   (lambda (expression state)
     (cond
       ((number? expression)                                         expression)
+      ((equal? expression 'true)                                    1)
+      ((equal? expression 'false)                                   0)
       ((contains? (get-operator expression) keyword-math-operators) (m-state-math-operators expression state))
       (else                                                         (error "This isn't a numerical expression")))))
 
 ; === Boolearn expression evaluator
-; TODO: actually evaluate an expression
 (define m-bool
   (lambda (expression state)
     (cond
