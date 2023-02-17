@@ -108,6 +108,20 @@
   (lambda (statement)
     (caddr statement)))
 
+; Evaluate the first operand from an expression represented by a list
+(define evaluate-first-operand
+  (lambda (statement state)
+    (if (is-literal? (get-first-operand statement))
+               (get-first-operand statement)
+               (m-state (get-first-operand) state))))
+
+; Evaluate the second operand from an expression represented by a list
+(define evaluate-second-operand
+  (lambda (statement state)
+    (if (is-literal? (get-second-operand statement))
+               (get-second-operand statement)
+               (m-state (get-second-operand) state))))
+
 ; === State handler ===
 ; Modify the state by a statement
 (define m-state
@@ -136,112 +150,74 @@
     (cond
       ((eq? (get-statement-type statement) '==) (m-state-equals              statement state))
       ((eq? (get-statement-type statement) '!=) (m-state-not-equals          statement state))
-      ((eq? (get-statement-type statement) '<=) (m-state-less-than-equals    statement state))
-      ((eq? (get-statement-type statement) '>=) (m-state-greater-than-equals statement state))
       ((eq? (get-statement-type statement) '<)  (m-state-less-than           statement state))
       ((eq? (get-statement-type statement) '>)  (m-state-greater-than        statement state))
+      ((eq? (get-statement-type statement) '<=) (m-state-less-than-equals    statement state))
+      ((eq? (get-statement-type statement) '>=) (m-state-greater-than-equals statement state))
     )))
 
 ; equals statement handler
 (define m-state-equals
   (lambda (statement state)
-    (cond
-      ((equal?
-           (if (is-literal? (get-first-operand statement))
-               (get-first-operand statement)
-               (m-state (get-first-operand) state))
-           (if (is-literal? (get-second-operand statement))
-               (get-second-operand statement)
-               (m-state (get-second-operand statement) state)))
-        true)
-        (else false))))
+    (if (equal?
+         (evaluate-first-operand  statement state)
+         (evaluate-second-operand statement state))
+        true
+        false)))
 
 ; not equals statement handler
 (define m-state-not-equals
   (lambda (statement state)
-    (cond
-      ((equal?
-           (if (is-literal? (get-first-operand statement))
-               (get-first-operand statement)
-               (m-state (get-first-operand) state))
-           (if (is-literal? (get-second-operand statement))
-               (get-second-operand statement)
-               (m-state (get-second-operand statement) state)))
-        false)
-        (else true))))
+    (if (equal?
+         (evaluate-first-operand  statement state)
+         (evaluate-second-operand statement state))
+        false
+        true)))
+
+; less than statement handler
+(define m-state-less-than
+  (lambda (statement state)
+    (if (<
+         (evaluate-first-operand  statement state)
+         (evaluate-second-operand statement state))
+        false
+        true)))
+
+; greater than statement handler
+(define m-state-greater-than
+  (lambda (statement state)
+    (if (>
+         (evaluate-first-operand  statement state)
+         (evaluate-second-operand statement state))
+        false
+        true)))
 
 ; less than or equal to statement handler
 (define m-state-less-than-equals
   (lambda (statement state)
-    (cond
-      ((equal?
-       (if (is-literal? (get-first-operand statement))
-           (get-first-operand statement)
-           (m-state (get-first-operand) state))
-       (if (is-literal? (get-second-operand statement))
-           (get-second-operand statement)
-           (m-state (get-second-operand statement) state)))
-        true)
-      ((<
-       (if (is-literal? (get-first-operand statement))
-           (get-first-operand statement)
-           (m-state (get-first-operand) state))
-       (if (is-literal? (get-second-operand statement))
-           (get-second-operand statement)
-           (m-state (get-second-operand statement) state)))
-      true)
-      (else false))))
+    (if (or
+         (equal?
+          (evaluate-first-operand  statement state)
+          (evaluate-second-operand statement state))
+         (<
+          (evaluate-first-operand  statement state)
+          (evaluate-second-operand statement state)))
+        true
+        false)))
        
 
 ; greater than or equal to statement handler
 (define m-state-greater-than-equals
   (lambda (statement state)
-    (cond
-      ((equal?
-       (if (is-literal? (get-first-operand statement))
-           (get-first-operand statement)
-           (m-state (get-first-operand) state))
-       (if (is-literal? (get-second-operand statement))
-           (get-second-operand statement)
-           (m-state (get-second-operand statement) state)))
-        true)
-      ((>
-       (if (is-literal? (get-first-operand statement))
-           (get-first-operand statement)
-           (m-state (get-first-operand) state))
-       (if (is-literal? (get-second-operand statement))
-           (get-second-operand statement)
-           (m-state (get-second-operand statement) state)))
-      true)
-      (else false))))
-
-; less than statement handler
-(define m-state-less-than
-  (lambda (statement state)
-    (cond
-      ((<
-       (if (is-literal? (get-first-operand statement))
-           (get-first-operand statement)
-           (m-state (get-first-operand) state))
-       (if (is-literal? (get-second-operand statement))
-           (get-second-operand statement)
-           (m-state (get-second-operand statement) state)))
-      true)
-      (else false))))
-
-; greater than statement handler
-(define m-state-greater-than
-  (lambda (statement state)
-    (cond
-      ((>
-       (if (is-literal? (get-first-operand statement))
-           (get-first-operand statement)
-           (m-state (get-first-operand) state))
-       (if (is-literal? (get-second-operand statement))
-           (get-second-operand statement)
-           (m-state (get-second-operand statement) state)))
-      true)
-      (else false))))
+    (if (or
+         (equal?
+          (evaluate-first-operand  statement state)
+          (evaluate-second-operand statement state))
+         (>
+          (evaluate-first-operand  statement state)
+          (evaluate-second-operand statement state)))
+        true
+        false)))
 
 ; === Control flow state handlers ===
 (define m-state-control
@@ -308,16 +284,17 @@
 (define m-number
   (lambda (expression state)
     (cond
-      ((number? expression) expression)
-      (else 0))))
+      ((number? expression)                                         expression)
+      ((contains? (get-operator expression) keyword-math-operators) (m-state-math-operators expression state))
+      (else                                                         (error "This isn't a numerical expression")))))
 
 ; === Boolearn expression evaluator
 ; TODO: actually evaluate an expression
 (define m-bool
   (lambda (expression state)
     (cond
-      ((equal? expression 'true)  'true)
-      ((equal? expression 'false) 'false)
+      ((equal? expression 'true)                                    'true)
+      ((equal? expression 'false)                                   'false)
       ((contains? (get-operator expression) keyword-bool-operators) (m-state-bool-operators   expression state))
       ((contains? (get-operator expression) keyword-comparators)    (m-state-comparators      expression state))
       (else                                                         (error "This isn't a boolean expression")))))
