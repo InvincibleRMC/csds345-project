@@ -191,7 +191,37 @@
 ; === Boolean operator state handlers ===
 (define m-state-bool-operators
   (lambda (statement state)
-    state))
+    (cond
+      ((eq? (get-statement-type statement) '!) (m-state-not  statement state))
+      ((eq? (get-statement-type statement) '&&) (m-state-and statement state))
+      ((eq? (get-statement-type statement) '||)  (m-state-or statement state)))))
+
+; not statement handler
+(define m-state-not
+  (lambda (statement state)
+    (if (equal?
+         (evaluate-first-operand  statement state)
+         'true)
+        false
+        true)))
+
+; and statement handler
+(define m-state-and
+  (lambda (statement state)
+    (if (and
+         (evaluate-first-operand  statement state)
+         (evaluate-second-operand statement state))
+        false
+        true)))
+
+; or statement handler
+(define m-state-or
+  (lambda (statement state)
+    (if (or
+         (evaluate-first-operand  statement state)
+         (evaluate-second-operand statement state))
+        false
+        true)))
 
 ; === Comparison operator state handlers ===
 (define m-state-comparators
