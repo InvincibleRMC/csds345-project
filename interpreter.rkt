@@ -108,6 +108,13 @@
   (lambda (statement)
     (caddr statement)))
 
+; Checks to see if there is a second operand in an expression represented by a list
+(define second-operand-exists?
+  (lambda (statement)
+    (if (null? (cddr statement))
+        #f
+        #t)))
+
 ; Evaluate the first operand from an expression represented by a list
 (define evaluate-first-operand
   (lambda (statement state)
@@ -154,11 +161,11 @@
 ; subtraction statement handler
 (define m-state-subtraction
   (lambda (statement state)
-    (if (null? (get-second-operand   statement))
-        (- 0 (evaluate-first-operand statement state))
+    (if (second-operand-exists? statement)
         (-
          (evaluate-first-operand     statement state)
-         (evaluate-second-operand    statement state)))))
+         (evaluate-second-operand    statement state))
+        (- 0 (evaluate-first-operand statement state)))))
 
 ; multiplication statement handler
 (define m-state-multiplication
