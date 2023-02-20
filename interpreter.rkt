@@ -199,29 +199,22 @@
 ; not statement handler
 (define m-state-not
   (lambda (statement state)
-    (if (equal?
-         (evaluate-first-operand  statement state)
-         'true)
-        false
-        true)))
+    (not (evaluate-first-operand  statement state))))
 
 ; and statement handler
 (define m-state-and
   (lambda (statement state)
-    (if (and
-         (evaluate-first-operand  statement state)
-         (evaluate-second-operand statement state))
-        false
-        true)))
+    (and
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
 
 ; or statement handler
 (define m-state-or
   (lambda (statement state)
-    (if (or
-         (evaluate-first-operand  statement state)
-         (evaluate-second-operand statement state))
-        false
-        true)))
+    (or
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
+
 
 ; === Comparison operator state handlers ===
 (define m-state-comparators
@@ -237,65 +230,52 @@
 ; equals statement handler
 (define m-state-equals
   (lambda (statement state)
-    (if (equal?
-         (evaluate-first-operand  statement state)
-         (evaluate-second-operand statement state))
-        true
-        false)))
+    (equal?
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
 
 ; not equals statement handler
 (define m-state-not-equals
   (lambda (statement state)
-    (if (equal?
-         (evaluate-first-operand  statement state)
-         (evaluate-second-operand statement state))
-        false
-        true)))
+    (evaluate-first-operand  statement state)
+    (evaluate-second-operand statement state)))
 
 ; less than statement handler
 (define m-state-less-than
   (lambda (statement state)
-    (if (<
-         (evaluate-first-operand  statement state)
-         (evaluate-second-operand statement state))
-        false
-        true)))
+    (<
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
 
 ; greater than statement handler
 (define m-state-greater-than
   (lambda (statement state)
-    (if (>
-         (evaluate-first-operand  statement state)
-         (evaluate-second-operand statement state))
-        false
-        true)))
+    (>
+     (evaluate-first-operand  statement state)
+     (evaluate-second-operand statement state))))
 
 ; less than or equal to statement handler
 (define m-state-less-than-equals
   (lambda (statement state)
-    (if (or
-         (equal?
-          (evaluate-first-operand  statement state)
-          (evaluate-second-operand statement state))
-         (<
-          (evaluate-first-operand  statement state)
-          (evaluate-second-operand statement state)))
-        true
-        false)))
+    (or
+     (equal?
+      (evaluate-first-operand  statement state)
+      (evaluate-second-operand statement state))
+     (<
+      (evaluate-first-operand  statement state)
+      (evaluate-second-operand statement state)))))
        
 
 ; greater than or equal to statement handler
 (define m-state-greater-than-equals
   (lambda (statement state)
-    (if (or
-         (equal?
-          (evaluate-first-operand  statement state)
-          (evaluate-second-operand statement state))
-         (>
-          (evaluate-first-operand  statement state)
-          (evaluate-second-operand statement state)))
-        true
-        false)))
+    (or
+     (equal?
+      (evaluate-first-operand  statement state)
+      (evaluate-second-operand statement state))
+     (>
+      (evaluate-first-operand  statement state)
+      (evaluate-second-operand statement state)))))
 
 ; === Control flow state handlers ===
 (define m-state-control
@@ -321,7 +301,7 @@
   (lambda (statement state)
     (if (check-for-binding (get-var-name statement) state)
         (error "variable already declared")
-        (add-binding (get-var-name statement) (get-var-value statement state) state))))
+        (add-binding (get-var-name statement) (get-var-value statement state) state)))))
 
 (define get-return-value
   (lambda (statement state)
@@ -370,8 +350,8 @@
 (define m-bool
   (lambda (expression state)
     (cond
-      ((equal? expression 'true)                                    'true)
-      ((equal? expression 'false)                                   'false)
+      ((equal? expression 'true)                                    #t)
+      ((equal? expression 'false)                                   #f)
       ((contains? (get-operator expression) keyword-bool-operators) (m-state-bool-operators   expression state))
       ((contains? (get-operator expression) keyword-comparators)    (m-state-comparators      expression state))
       (else                                                         (error "This isn't a boolean expression")))))
