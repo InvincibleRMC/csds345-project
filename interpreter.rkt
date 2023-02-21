@@ -207,9 +207,7 @@
 ; Checks to see if there is a second operand in an expression represented by a list
 (define second-operand-exists?
   (lambda (expression)
-    (if (null? (cddr expression))
-        #f
-        #t)))
+    (not (null? (cddr expression)))))
 
 (define (single-element? expression)
   (not (list? expression)))
