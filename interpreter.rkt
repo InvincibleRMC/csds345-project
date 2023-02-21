@@ -236,7 +236,7 @@
 ; division expresion evaluator
 (define m-number-division
   (lambda (expression state)
-    (/
+    (quotient
      (m-number (get-first-operand expression)  state)
      (m-number (get-second-operand expression) state))))
 
