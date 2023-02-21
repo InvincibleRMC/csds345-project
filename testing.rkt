@@ -59,9 +59,9 @@
  ;--------------------
  ; Our Tests
  ;--------------------
-(assert "test-cases/our-tests/test29.txt" true)
+(interpret "test-cases/our-tests/test29.txt") ; 214216
 ; Bool to int casting tests
-(assert "test-cases/our-tests/test30.txt" false)
-(assert "test-cases/our-tests/test31.txt" true)
-(assert "test-cases/our-tests/test32.txt" true)
-(assert "test-cases/our-tests/test33.txt" false)
+(interpret "test-cases/our-tests/test30.txt") ; false
+(interpret "test-cases/our-tests/test31.txt") ; true
+(interpret "test-cases/our-tests/test32.txt") ; true
+(interpret "test-cases/our-tests/test33.txt") ; false

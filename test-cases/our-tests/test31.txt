@@ -1,1 +1,1 @@
-return false == 0
+return false == 0;

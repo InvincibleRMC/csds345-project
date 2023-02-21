@@ -1,9 +1,8 @@
-var x = 1;
-var y = 1;
-var k = 10;
-while (k > 0)
-    var temp = y;
-    y = x;
-    x = y + temp;
-    k = k - 1;
-return x;
+var sum = 0;
+var i = 0;
+
+while ((i = i + 1) < 1000)
+    if (((i % 7) == 0) || ((i % 3) == 0))
+	    sum = sum + i;
+		
+return sum;
