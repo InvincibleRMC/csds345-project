@@ -35,10 +35,10 @@
 (interpret "test-cases/given-tests/easy-tests/test14.txt")
 (error "Variable Already Declared")
 |#
-(assert "test-cases/given-tests/easy-tests/test15.txt" true)
+(assert "test-cases/given-tests/easy-tests/test15.txt" TRUE)
 (assert "test-cases/given-tests/easy-tests/test16.txt" 100)
-(assert "test-cases/given-tests/easy-tests/test17.txt" false)
-(assert "test-cases/given-tests/easy-tests/test18.txt" true)
+(assert "test-cases/given-tests/easy-tests/test17.txt" FALSE)
+(assert "test-cases/given-tests/easy-tests/test18.txt" TRUE)
 (assert "test-cases/given-tests/easy-tests/test19.txt" 128)
 (assert "test-cases/given-tests/easy-tests/test20.txt" 12)
 
