@@ -53,6 +53,8 @@
   (lambda (name state)
     (cond
       ((null? state)                            (error "Name not bound"))
+      ((and (eq? (car (get-state-names state)) name) (eq? (car (get-state-values state)) NULL))
+                                                (error "Tried to evaluate expression with an uninitialized variable"))
       ((eq? (car (get-state-names state)) name) (car (get-state-values state)))
       (else                                     (get-binding-value name (make-state (cdr (get-state-names state)) (cdr (get-state-values state))))))))
 
@@ -135,10 +137,16 @@
       (if (else-exist? statement)
           (m-state (get-else statement) state)
           state)))
-; while statement handler TODO
 
+; while statement handler TODO
 (define (m-state-while statement state)
-  (display "TODO"))
+  (if (m-bool (get-condition statement) state)
+      (m-state-while statement (m-state (get-loop-body statement) state))
+      state))
+
+(define get-loop-body
+  (lambda (statement)
+    (caddr statement)))
 
 
 ; var statement handler

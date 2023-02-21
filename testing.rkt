@@ -25,14 +25,13 @@
 #|
 (interpret "test-cases/given-tests/easy-tests/test11.txt")
 (error "Undeclared Variable")
-|#
-#|
+
 (interpret "test-cases/given-tests/easy-tests/test12.txt")
 (error "Undeclared Variable")
-|#
+
 (interpret "test-cases/given-tests/easy-tests/test13.txt")
-(error "Uninitialized Variable")
-#|
+(error "Tried to evaluate expression with an uninitialized variable")
+
 (interpret "test-cases/given-tests/easy-tests/test14.txt")
 (error "Variable Already Declared")
 |#
