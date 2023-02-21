@@ -264,6 +264,7 @@
       ((eq? (get-operator expression) '=)                           (m-number-assign expression state))
       (else                                                         (error "This isn't a numerical expression")))))
 
+
 ; === Numerical expression evaluators ===
 (define m-number-math-operators
   (lambda (expression state)

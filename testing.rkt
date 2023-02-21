@@ -55,13 +55,12 @@
 (assert "test-cases/given-tests/hard-tests/test27.txt" 21)
 (assert "test-cases/given-tests/hard-tests/test28.txt" 164)
 
-
  ;--------------------
  ; Our Tests
  ;--------------------
-(interpret "test-cases/our-tests/test29.txt") ; 214216
+(assert "test-cases/Levi-Noah-Michael-test/test29.txt" 214216)
 ; Bool to int casting tests
-(interpret "test-cases/our-tests/test30.txt") ; false
-(interpret "test-cases/our-tests/test31.txt") ; true
-(interpret "test-cases/our-tests/test32.txt") ; true
-(interpret "test-cases/our-tests/test33.txt") ; false
+(assert "test-cases/Levi-Noah-Michael-test/test30.txt" FALSE)
+(assert "test-cases/Levi-Noah-Michael-test/test31.txt" TRUE)
+(assert "test-cases/Levi-Noah-Michael-test/test32.txt" TRUE)
+(assert "test-cases/Levi-Noah-Michael-test/test33.txt" FALSE)
