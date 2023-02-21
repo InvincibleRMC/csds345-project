@@ -120,15 +120,18 @@
   (caddr statement))
 
 (define (get-else statement)
+  (cadddr statement))
+
+(define (get-else-not-exist statement)
   (cdddr statement))
 
 (define (else-exist? statement)
-  (null? (get-else statement)))
+  (not (null? (get-else-not-exist statement))))
 
 (define (m-state-if statement state)
   (if (m-bool (get-condition statement) state)
       (m-state (get-then statement) state)
-
+      
       (if (else-exist? statement)
           (m-state (get-else statement) state)
           state)))
@@ -168,7 +171,7 @@
 (define m-state-assign
   (lambda (statement state)
     (if (check-for-binding (get-assign-name statement) state)
-        (add-binding (get-assign-name statement) (get-assign-value statement) state)
+        (add-binding (get-assign-name statement) (get-assign-value statement state) state)
         (error "Undeclared Variable"))))
 
 (define get-assign-name
@@ -176,8 +179,10 @@
     (cadr statement)))
 
 (define get-assign-value
-  (lambda (statement)
-    (caddr statement)))
+  (lambda (statement state)
+    (if (check-for-binding (get-second-operand statement) state)
+        (m-value (get-second-operand statement) state)
+    (get-second-operand statement))))
 
 ; === Values expression evaluator
 (define m-value
@@ -250,9 +255,11 @@
 (define m-number-subtraction
   (lambda (expression state)
     (if (second-operand-exists? expression)
+        ; Subtraction
         (-
          (m-number (get-first-operand expression) state)
          (m-number (get-second-operand expression) state))
+        ; Unary
         (- 0 (m-number (get-first-operand expression) state)))))
 
 ; multiplication expresion evaluator
