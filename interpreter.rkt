@@ -120,12 +120,18 @@
   (caddr statement))
 
 (define (get-else statement)
-  (cadddr statement))
+  (cdddr statement))
+
+(define (else-exist? statement)
+  (null? (get-else statement)))
 
 (define (m-state-if statement state)
   (if (m-bool (get-condition statement) state)
       (m-state (get-then statement) state)
-      (m-state (get-else statement) state)))
+
+      (if (else-exist? statement)
+          (m-state (get-else statement) state)
+          state)))
 ; while statement handler TODO
 
 (define (m-state-while statement state)
@@ -136,7 +142,7 @@
 (define m-state-var
   (lambda (statement state)
     (if (check-for-binding (get-var-name statement) state)
-        (error "variable already declared")
+        (error "Variable Already Declared")
         (add-binding (get-var-name statement) (get-var-value statement state) state))))
 
 (define get-var-name
@@ -163,7 +169,7 @@
   (lambda (statement state)
     (if (check-for-binding (get-assign-name statement) state)
         (add-binding (get-assign-name statement) (get-assign-value statement) state)
-        (error "Cannot assign to a variable that has not been declared"))))
+        (error "Undeclared Variable"))))
 
 (define get-assign-name
   (lambda (statement)

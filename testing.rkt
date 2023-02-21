@@ -20,12 +20,18 @@
 (assert "test-cases/given-tests/easy-tests/test8.txt" 10)
 (assert "test-cases/given-tests/easy-tests/test9.txt" 5)
 (assert "test-cases/given-tests/easy-tests/test10.txt" -39)
-;TODO errors
-(assert "test-cases/given-tests/easy-tests/test11.txt" true)
+
+; Error Tests
+#|
+(interpret "test-cases/given-tests/easy-tests/test11.txt")
+(error "Undeclared Variable")
+|#
 (assert "test-cases/given-tests/easy-tests/test12.txt" true)
 (assert "test-cases/given-tests/easy-tests/test13.txt" true)
+#|
 (assert "test-cases/given-tests/easy-tests/test14.txt" true)
-
+(error "Variable Already Declared")
+|#
 (assert "test-cases/given-tests/easy-tests/test15.txt" true)
 (assert "test-cases/given-tests/easy-tests/test16.txt" 100)
 (assert "test-cases/given-tests/easy-tests/test17.txt" false)
