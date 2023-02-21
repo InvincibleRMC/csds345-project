@@ -71,7 +71,7 @@
                                                                                   (cons (car (get-state-names  state)) (get-state-names  v))
                                                                                   (cons (car (get-state-values state)) (get-state-values v))))))))))
 
-; Get the keyword the defines the statment type from a statment represented by a list
+; Get the keyword the defines the statement type from a statement represented by a list
 (define get-statement-type
   (lambda (statement)
     (car statement)))
@@ -107,7 +107,30 @@
     (cond
       ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state))
       ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
-      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state)))))
+      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state))
+      ((eq? (get-statement-type statement) 'if)     (m-state-if statement state))
+      ((eq? (get-statement-type statement) 'while)  (m-state-while statement state))
+      (else                                         (error "Unknown Control Keyword")))))
+       =
+; if statement handler
+(define (get-condition statement)
+  (cadr statement))
+
+(define (get-then statement)
+  (caddr statement))
+
+(define (get-else statement)
+  (cadddr statement))
+
+(define (m-state-if statement state)
+  (if (m-bool (get-condition statement) state)
+      (m-state (get-then statement) state)
+      (m-state (get-else statement) state)))
+; while statement handler TODO
+
+(define (m-state-while statement state)
+  (display "TODO"))
+
 
 ; var statement handler
 (define m-state-var
@@ -190,7 +213,7 @@
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    #t)
       (else                                                         #f))))
 
-; === Numerical expresion evaluator ===
+; === Numerical expression evaluator ===
 (define m-number
   (lambda (expression state)
     (cond
@@ -200,7 +223,7 @@
       ((is-bool-expression? expression state)                       (if (m-bool expression state) 1 0))  ; Cast bool to number
       (else                                                         (error "This isn't a numerical expression")))))
 
-; === Numerical expresion evaluators ===
+; === Numerical expression evaluators ===
 (define m-number-math-operators
   (lambda (expression state)
     (cond
@@ -210,7 +233,7 @@
       ((eq? (get-operator expression) '/) (m-number-division       expression state))
       ((eq? (get-operator expression) '%) (m-number-modulus        expression state)))))
 
-; addition expresion evaluator
+; addition expression evaluator
 (define m-number-addition
   (lambda (expression state)
     (+
