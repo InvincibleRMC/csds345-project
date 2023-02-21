@@ -26,12 +26,14 @@
 (interpret "test-cases/given-tests/easy-tests/test11.txt")
 (error "Undeclared Variable")
 |#
-(assert "test-cases/given-tests/easy-tests/test12.txt" true)
+#|
+(interpret "test-cases/given-tests/easy-tests/test12.txt")
 (error "Undeclared Variable")
-(assert "test-cases/given-tests/easy-tests/test13.txt" true)
+|#
+(interpret "test-cases/given-tests/easy-tests/test13.txt")
 (error "Uninitialized Variable")
 #|
-(assert "test-cases/given-tests/easy-tests/test14.txt" true)
+(interpret "test-cases/given-tests/easy-tests/test14.txt")
 (error "Variable Already Declared")
 |#
 (assert "test-cases/given-tests/easy-tests/test15.txt" true)
