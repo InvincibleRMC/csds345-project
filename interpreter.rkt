@@ -1,10 +1,10 @@
 #lang racket
 (require "simpleParser.rkt")
 
-(define keyword-math-operators '(+ - * / %))
-(define keyword-bool-operators '(&& || !))
-(define keyword-comparators    '(== != < > <= >=))
-(define keyword-control        '(var = return if while))
+(define KEYWORD_MATH_OPERATORS '(+ - * / %))
+(define KEYWORD_BOOL_OPERATORS '(&& || !))
+(define KEYWORD_COMPARATORS    '(== != < > <= >=))
+(define KEYWORD_CONTROL        '(var = return if while))
 
 (define NULL 'null)
 (define RETURN 'return)
@@ -100,10 +100,10 @@
   (lambda (statement state)
     (cond
       ((null? statement)                                                 state)
-      ((contains? (get-statement-type statement) keyword-math-operators) (m-state-math-operators statement state))
-      ((contains? (get-statement-type statement) keyword-bool-operators) (m-state-bool-operators statement state))
-      ((contains? (get-statement-type statement) keyword-comparators)    (m-state-comparators    statement state))
-      ((contains? (get-statement-type statement) keyword-control)        (m-state-control        statement state))
+      ((contains? (get-statement-type statement) KEYWORD_MATH_OPERATORS) (m-state-math-operators statement state))
+      ((contains? (get-statement-type statement) KEYWORD_BOOL_OPERATORS) (m-state-bool-operators statement state))
+      ((contains? (get-statement-type statement) KEYWORD_COMPARATORS)    (m-state-comparators    statement state))
+      ((contains? (get-statement-type statement) KEYWORD_CONTROL)        (m-state-control        statement state))
       (else                                                              (error "Unknown keyword")))))
 
 (define m-state-math-operators
@@ -174,7 +174,7 @@
   (lambda (expression state)
     (cond
       ((number? expression)                                         (m-number expression state))
-      ((contains? (get-operator expression) keyword-math-operators) (m-number expression state))
+      ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number expression state))
       (else                                                         (m-bool   expression state)))))
 
 ; Get the operator from a expression represented by a list
@@ -204,8 +204,8 @@
     (cond
       ((eq? expression 'true)                                       #t)
       ((eq? expression 'false)                                      #t)
-      ((contains? (get-operator expression) keyword-bool-operators) #t)
-      ((contains? (get-operator expression) keyword-comparators)    #t)
+      ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) #t)
+      ((contains? (get-operator expression) KEYWORD_COMPARATORS)    #t)
       (else                                                         #f))))
 
 ; === Numerical expresion evaluator ===
@@ -213,7 +213,7 @@
   (lambda (expression state)
     (cond
       ((number? expression)                                         expression)
-      ((contains? (get-operator expression) keyword-math-operators) (m-number-math-operators expression state))
+      ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state))
       ((is-bool-expression? expression)                             (if (m-bool expression state) 1 0))  ; Cast bool to number
       (else                                                         (error "This isn't a numerical expression")))))
 
@@ -271,8 +271,8 @@
     (cond
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
-      ((contains? (get-operator expression) keyword-bool-operators) (m-state-bool-operators   expression state))
-      ((contains? (get-operator expression) keyword-comparators)    (m-state-comparators      expression state))
+      ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-state-bool-operators   expression state))
+      ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-state-comparators      expression state))
       (else                                                         (error "This isn't a boolean expression")))))
 
 ; === Comparison operator expression evaluator ===
