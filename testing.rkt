@@ -28,10 +28,10 @@
 |#
 #|
 (interpret "test-cases/given-tests/easy-tests/test12.txt")
-(error "Uninitialized Variable")
+(error "Undeclared Variable")
 |#
 (interpret "test-cases/given-tests/easy-tests/test13.txt")
-(error "Undeclared Variable")
+(error "Uninitialized Variable")
 #|
 (interpret "test-cases/given-tests/easy-tests/test14.txt")
 (error "Variable Already Declared")
