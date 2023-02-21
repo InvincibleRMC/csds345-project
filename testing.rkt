@@ -27,7 +27,9 @@
 (error "Undeclared Variable")
 |#
 (assert "test-cases/given-tests/easy-tests/test12.txt" true)
+(error "Undeclared Variable")
 (assert "test-cases/given-tests/easy-tests/test13.txt" true)
+(error "Uninitialized Variable")
 #|
 (assert "test-cases/given-tests/easy-tests/test14.txt" true)
 (error "Variable Already Declared")

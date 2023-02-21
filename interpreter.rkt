@@ -180,9 +180,7 @@
 
 (define get-assign-value
   (lambda (statement state)
-    (if (check-for-binding (get-second-operand statement) state)
-        (m-value (get-second-operand statement) state)
-    (get-second-operand statement))))
+        (m-value (get-second-operand statement) state)))
 
 ; === Values expression evaluator
 (define m-value
