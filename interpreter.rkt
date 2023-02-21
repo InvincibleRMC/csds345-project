@@ -211,6 +211,9 @@
         #f
         #t)))
 
+(define (single-element? expression)
+  (not (list? expression)))
+
 (define is-bool-expression?
   (lambda (expression state)
     (cond
@@ -218,6 +221,7 @@
       ((eq? expression 'false)                                      #t)
       ((number? expression)                                         #f)
       ((check-for-binding expression state)                         (boolean? (get-binding-value expression state)))
+      ((single-element? expression)                                 #f)
       ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) #t)
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    #t)
       (else                                                         #f))))
@@ -228,6 +232,7 @@
     (cond
       ((number? expression)                                         expression)
       ((check-for-binding expression state)                         (get-binding-value expression state))
+      ((single-element? expression)                                 (error "Undeclared Variable"))
       ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state))
       ((is-bool-expression? expression state)                       (if (m-bool expression state) 1 0))  ; Cast bool to number
       (else                                                         (error "This isn't a numerical expression")))))
@@ -289,6 +294,7 @@
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
       ((check-for-binding expression state)                         (get-binding-value      expression state))
+      ((single-element? expression)                                 (error "Undeclared Variable"))
       ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state))
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state))
       (else                                                         (error "This isn't a boolean expression")))))
