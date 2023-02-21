@@ -1,10 +1,10 @@
 #lang racket
 (require "simpleParser.rkt")
 
-(define keyword-math-operators '(+ - * / %))
-(define keyword-bool-operators '(&& || !))
-(define keyword-comparators    '(== != < > <= >=))
-(define keyword-control        '(var = return if while))
+(define KEYWORD_MATH_OPERATORS '(+ - * / %))
+(define KEYWORD_BOOL_OPERATORS '(&& || !))
+(define KEYWORD_COMPARATORS    '(== != < > <= >=))
+(define KEYWORD_CONTROL        '(var = return if while))
 
 (define NULL 'null)
 (define RETURN 'return)
@@ -83,10 +83,10 @@
   (lambda (statement state)
     (cond
       ((null? statement)                                                 state)
-      ((contains? (get-statement-type statement) keyword-math-operators) (m-state-math-operators statement state))
-      ((contains? (get-statement-type statement) keyword-bool-operators) (m-state-bool-operators statement state))
-      ((contains? (get-statement-type statement) keyword-comparators)    (m-state-comparators    statement state))
-      ((contains? (get-statement-type statement) keyword-control)        (m-state-control        statement state))
+      ((contains? (get-statement-type statement) KEYWORD_MATH_OPERATORS) (m-state-math-operators statement state))
+      ((contains? (get-statement-type statement) KEYWORD_BOOL_OPERATORS) (m-state-bool-operators statement state))
+      ((contains? (get-statement-type statement) KEYWORD_COMPARATORS)    (m-state-comparators    statement state))
+      ((contains? (get-statement-type statement) KEYWORD_CONTROL)        (m-state-control        statement state))
       (else                                                              (error "Unknown keyword")))))
 
 (define m-state-math-operators
@@ -186,8 +186,8 @@
       ((eq? expression 'false)                                      #t)
       ((number? expression)                                         #f)
       ((check-for-binding expression state)                         (boolean? (get-binding-value expression state)))
-      ((contains? (get-operator expression) keyword-bool-operators) #t)
-      ((contains? (get-operator expression) keyword-comparators)    #t)
+      ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) #t)
+      ((contains? (get-operator expression) KEYWORD_COMPARATORS)    #t)
       (else                                                         #f))))
 
 ; === Numerical expresion evaluator ===
@@ -196,7 +196,7 @@
     (cond
       ((number? expression)                                         expression)
       ((check-for-binding expression state)                         (get-binding-value expression state))
-      ((contains? (get-operator expression) keyword-math-operators) (m-number-math-operators expression state))
+      ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state))
       ((is-bool-expression? expression state)                       (if (m-bool expression state) 1 0))  ; Cast bool to number
       (else                                                         (error "This isn't a numerical expression")))))
 
@@ -255,8 +255,8 @@
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
       ((check-for-binding expression state)                         (get-binding-value      expression state))
-      ((contains? (get-operator expression) keyword-bool-operators) (m-bool-bool-operators expression state))
-      ((contains? (get-operator expression) keyword-comparators)    (m-bool-comparators    expression state))
+      ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state))
+      ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state))
       (else                                                         (error "This isn't a boolean expression")))))
 
 ; === Comparison operator expression evaluator ===
