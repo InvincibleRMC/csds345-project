@@ -1,10 +1,12 @@
 #lang racket
+;#lang algebraic/racket/base/linted
 (require "simpleParser.rkt")
 
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
 (define KEYWORD_CONTROL        '(var = return if while))
+(define EMPTY_STATE            '(() ()))
 
 (define NULL 'null)
 (define RETURN 'return)
@@ -18,7 +20,7 @@
 (provide interpret)
 (define interpret
   (lambda (filename)
-    (interpreter-helper (parser filename) '(() ()))))
+    (interpreter-helper (parser filename) EMPTY_STATE)))
 
 (define interpreter-helper
   (lambda (statementlist state)
@@ -127,7 +129,7 @@
       ((eq? (get-statement-type statement) 'if)     (m-state-if statement state))
       ((eq? (get-statement-type statement) 'while)  (m-state-while statement state))
       (else                                         (error "Unknown Control Keyword")))))
-       =
+ 
 ; if statement handler
 (define (get-condition statement)
   (cadr statement))
@@ -275,44 +277,39 @@
       ((eq? (get-operator expression) '/) (m-number-division       expression state))
       ((eq? (get-operator expression) '%) (m-number-modulus        expression state)))))
 
+(define (m-number-helper func expression state)
+  (func
+   (m-number (get-first-operand expression)  state)
+     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state))))
+   
 ; addition expression evaluator
 (define m-number-addition
   (lambda (expression state)
-    (+
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
-
+    (m-number-helper + expression state)))
 ; subtraction expresion evaluator
 (define m-number-subtraction
   (lambda (expression state)
     (if (second-operand-exists? expression)
         ; Subtraction
-        (-
-         (m-number (get-first-operand expression) state)
-         (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))
+       (m-number-helper - expression state)
         ; Unary
         (- 0 (m-number (get-first-operand expression) state)))))
 
 ; multiplication expresion evaluator
 (define m-number-multiplication
   (lambda (expression state)
-    (*
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+   (m-number-helper * expression state)))
 
 ; division expresion evaluator
 (define m-number-division
   (lambda (expression state)
-    (quotient
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+    (m-number-helper quotient expression state)))
 
 ; modulus expresion evaluator
 (define m-number-modulus
   (lambda (expression state)
-    (modulo
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+     (m-number-helper modulo expression state)))
+
 
 ; assignment expression evaluator
 (define m-number-assign
@@ -345,45 +342,36 @@
 ; equals expression evaluator
 (define m-bool-equals
   (lambda (expression state)
-    (equal?
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+     (m-number-helper equal? expression state)))
 
 ; not equals expression evaluator
 (define m-bool-not-equals
   (lambda (expression state)
-    (not (equal?
-          (m-number (get-first-operand expression)  state)
-          (m-number (get-second-operand expression) (m-state (get-first-operand expression) state))))))
+    (not (m-number-helper equal? expression state))))
+
 
 ; less than expression evaluator
 (define m-bool-less-than
   (lambda (expression state)
-    (<
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+    (m-number-helper < expression state)))
+
 
 ; greater than expression evaluator
 (define m-bool-greater-than
   (lambda (expression state)
-    (>
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+   (m-number-helper > expression state)))
+
 
 ; less than or equal to expression evaluator
 (define m-bool-less-than-equals
   (lambda (expression state)
-    (<=
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+   (m-number-helper <= expression state)))
        
 
 ; greater than or equal to expression evaluator
 (define m-bool-greater-than-equals
   (lambda (expression state)
-    (>=
-     (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+   (m-number-helper >= expression state)))
 
 ; === Boolean operator expression handlers ===
 (define m-bool-bool-operators
@@ -398,16 +386,18 @@
   (lambda (expression state)
     (not (m-bool (get-first-operand expression) state))))
 
+
+(define (m-bool-helper func expression state)
+  (func
+   (m-bool (get-first-operand expression)  state)
+   (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state))))
+
 ; and expression handler
 (define m-bool-and
   (lambda (expression state)
-    (and
-     (m-bool (get-first-operand expression)  state)
-     (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+    (m-bool-helper and expression state)))
 
 ; or expression handler
 (define m-bool-or
   (lambda (expression state)
-    (or
-     (m-bool (get-first-operand expression)  state)
-     (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state)))))
+     (m-bool-helper or expression state)))
