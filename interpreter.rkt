@@ -1,5 +1,4 @@
 #lang racket
-;#lang algebraic/racket/base/linted
 (require "simpleParser.rkt")
 
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
