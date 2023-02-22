@@ -395,9 +395,9 @@
 ; and expression handler
 (define m-bool-and
   (lambda (expression state)
-    (m-bool-helper and expression state)))
+    (m-bool-helper (lambda (a b) (and a b)) expression state)))
 
 ; or expression handler
 (define m-bool-or
   (lambda (expression state)
-     (m-bool-helper or expression state)))
+      (m-bool-helper (lambda (a b) (or a b)) expression state)))
