@@ -71,13 +71,21 @@
       ((eq? (car list) element) #t)
       (else                     (contains? element (cdr list))))))
 
-(define get-state-names
-  (lambda (state)
-    (car state)))
+(define (get-state-names state)
+  (get-state-names-cps state (lambda (v) v)))
 
-(define get-state-values
-  (lambda (state)
-    (cadr state)))
+(define (get-state-names-cps state continuation)
+  (if (null? state)
+      (continuation '())
+      (get-state-names-cps (next-state state) (lambda (v) (continuation (append (car state) v))))))
+
+(define (get-state-values state)
+  (get-state-values-cps state (lambda (v) v)))
+
+(define (get-state-values-cps state continuation)
+  (if (null? state)
+      (continuation '())
+      (get-state-values-cps (next-state state) (lambda (v) (continuation (append (cadr state) v))))))
 
 (define make-state
   (lambda (names values)
