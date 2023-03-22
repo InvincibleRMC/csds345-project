@@ -64,3 +64,34 @@
 (assert "test-cases/Levi-Noah-Michael-test/test31.txt" TRUE)
 (assert "test-cases/Levi-Noah-Michael-test/test32.txt" TRUE)
 (assert "test-cases/Levi-Noah-Michael-test/test33.txt" FALSE)
+
+;--------------------
+ ; Part2 Tests
+ ;--------------------
+(assert "test-cases/given-tests/part2-test/test01.txt" 20)
+(assert "test-cases/given-tests/part2-test/test02.txt" 164)
+(assert "test-cases/given-tests/part2-test/test03.txt" 32)
+(assert "test-cases/given-tests/part2-test/test04.txt" 2)
+; Error test 5
+(assert "test-cases/given-tests/part2-test/test05.txt" 220)
+
+(assert "test-cases/given-tests/part2-test/test06.txt" 25)
+(assert "test-cases/given-tests/part2-test/test07.txt" 21)
+(assert "test-cases/given-tests/part2-test/test08.txt" 6)
+(assert "test-cases/given-tests/part2-test/test09.txt" -1)
+(assert "test-cases/given-tests/part2-test/test10.txt" 789)
+; Error test 11, 12, 13
+(assert "test-cases/given-tests/part2-test/test11.txt" 150)
+(assert "test-cases/given-tests/part2-test/test12.txt" -4)
+(assert "test-cases/given-tests/part2-test/test13.txt" 10)
+
+(assert "test-cases/given-tests/part2-test/test14.txt" 12)
+(assert "test-cases/given-tests/part2-test/test15.txt" 125)
+(assert "test-cases/given-tests/part2-test/test16.txt" 110)
+(assert "test-cases/given-tests/part2-test/test17.txt" 2000400)
+(assert "test-cases/given-tests/part2-test/test18.txt" 101)
+; Error test 19
+(assert "test-cases/given-tests/part2-test/test19.txt" 5)
+
+(assert "test-cases/given-tests/part2-test/test20.txt" 21)
+
