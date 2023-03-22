@@ -4,7 +4,7 @@
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
-(define KEYWORD_CONTROL        '(var = return if while))
+(define KEYWORD_CONTROL        '(var = return if while begin))
 (define EMPTY_STATE            '(() ()))
 
 (define NULL 'null)
@@ -35,6 +35,35 @@
       (else            return))))
 
 ; === State helper functions ===
+
+(define (get-current-state state)
+  (cons (car state) (cons (cadr state) '())))
+
+(define (next-state state)
+  (cddr state))
+
+(define (add-scope state)
+  (add-scope-cps state (lambda (v) v)))
+
+(define (add-scope-cps state continuation)
+  (if (null? (next-state state))
+      (continuation EMPTY_STATE)
+      (add-scope-cps (next-state state) (lambda (v) (continuation (append (get-current-state state) v))))))
+
+(define (next-next-state state)
+  (cddddr state))
+
+(define (remove-scope state)
+  (remove-scope-cps state (lambda (v) v)))
+
+(define (remove-scope-cps state continuation)
+  (if (null? (next-state state))
+      (error "trying to leave scope without entering one")
+  
+      (if (null? (next-next-state state))
+          (continuation (get-current-state state))
+          (remove-scope-cps (next-state state) (lambda (v) (continuation (append (get-current-state state) v)))))))
+
 (define contains?
   (lambda (element list)
     (cond
@@ -127,8 +156,18 @@
       ((eq? (get-statement-type statement) '=)      (m-state-assign statement state))
       ((eq? (get-statement-type statement) 'if)     (m-state-if statement state))
       ((eq? (get-statement-type statement) 'while)  (m-state-while statement state))
+      ((eq? (get-statement-type statement) 'begin)   (m-state-begin statement state))
       (else                                         (error "Unknown Control Keyword")))))
- 
+
+
+; begin/ {} statement handler
+(define (m-state-begin statement state)
+  ((lambda (scoped-state) scoped-state
+     ;todo in here
+     (remove-scope scoped-state)
+     ) EMPTY_STATE)
+   (add-scope state))
+
 ; if statement handler
 (define (get-condition statement)
   (cadr statement))
