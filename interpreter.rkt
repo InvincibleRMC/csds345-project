@@ -47,7 +47,7 @@
 
 (define (add-scope-cps state continuation)
   (if (null? (next-state state))
-      (continuation EMPTY_STATE)
+      (continuation (append state EMPTY_STATE))
       (add-scope-cps (next-state state) (lambda (v) (continuation (append (get-current-state state) v))))))
 
 (define (next-next-state state)
@@ -170,11 +170,12 @@
 
 ; begin/ {} statement handler
 (define (m-state-begin statement state)
-  ((lambda (scoped-state) scoped-state
-     ;todo in here
-     (remove-scope scoped-state)
-     ) EMPTY_STATE)
-   (add-scope state))
+     (remove-scope (interpreter-helper (get-statement-list statement) (add-scope state))))
+       
+
+   ;
+   (define (get-statement-list statement)
+     (cdr statement))
 
 ; if statement handler
 (define (get-condition statement)
