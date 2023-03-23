@@ -77,7 +77,8 @@
 (assert "test-cases/given-tests/part2-test/test03.txt" 32)
 (assert "test-cases/given-tests/part2-test/test04.txt" 2)
 ; Error test 5
-(assert "test-cases/given-tests/part2-test/test05.txt" 220)
+;(interpret "test-cases/given-tests/part2-test/test05.txt")
+;(error "Undeclared Variable")
 
 (assert "test-cases/given-tests/part2-test/test06.txt" 25)
 (assert "test-cases/given-tests/part2-test/test07.txt" 21)

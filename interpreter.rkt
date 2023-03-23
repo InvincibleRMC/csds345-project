@@ -210,7 +210,12 @@
 
 ; m-state-body-begin
 (define (m-state-body-begin statementlist state next break continue return throw)
-  (m-state-body statementlist (add-scope state) next break continue return throw))
+  (m-state-body statementlist (add-scope state)
+                (lambda (s) (next (remove-scope s)))
+                (lambda (s) (break (remove-scope s)))
+                (lambda (s) (continue (remove-scope s)))
+                return
+                (lambda (s) (throw (remove-scope s)))))
 
 (define (one-statement? statementlist)
   (or (not (list? (car statementlist))) (null? (cdr statementlist))))
