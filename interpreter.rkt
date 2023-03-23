@@ -19,14 +19,12 @@
 (provide interpret)
 (define interpret
   (lambda (filename)
-    (m-state-body (parser filename) EMPTY_STATE  identity identity identity identity identity)))
-
-(define interpreter-helper
-  (lambda (statementlist state  next break continue return throw)
-    ; (if (check-for-binding RETURN state)
-    ; (interpret-return-output (get-binding-value RETURN state))
-    (interpreter-helper (cdr statementlist) (m-state (car statementlist) state  next break continue return throw)  next break continue return throw)))
-;)
+    (m-state-body (parser filename) EMPTY_STATE
+                  (lambda (s) (error "No return statement"))
+                  (lambda (s) (error "Break outside of loop"))
+                  (lambda (s) (error "Continue outside of loop"))
+                  (lambda (v) (interpret-return-output v))
+                  (lambda (s) (error "Error thrown without catch")))))
 
 (define identity
   (lambda (v) v))
@@ -170,9 +168,9 @@
 (define m-state
   (lambda (statement state next break continue return throw)
     (cond
-      ((null? statement)                                                 state)
-      ((eq? statement NULL)                                              state)
-      ((single-element? statement)                                       state)
+      ((null? statement)                                                 (next state))
+      ((eq? statement NULL)                                              (next state))
+      ((single-element? statement)                                       (next state))
       ((contains? (get-statement-type statement) KEYWORD_MATH_OPERATORS) (m-state-operators statement state next break continue return throw))
       ((contains? (get-statement-type statement) KEYWORD_BOOL_OPERATORS) (m-state-operators statement state next break continue return throw))
       ((contains? (get-statement-type statement) KEYWORD_COMPARATORS)    (m-state-operators statement state next break continue return throw))
@@ -191,8 +189,8 @@
 
 (define m-state-operators-two
   (lambda (statement state next break continue return throw)
-    (m-state (get-second-operand statement) (m-state (get-first-operand statement) state next break continue return throw)
-             next break continue return throw)))
+    (m-state (get-first-operand statement) state (lambda (s) (m-state (get-second-operand statement) s next break continue return throw))
+             break continue return throw)))
 
 ; === Control flow state handlers ===
 (define m-state-control
@@ -205,10 +203,6 @@
       ((eq? (get-statement-type statement) 'while)  (m-state-while  statement state next break continue return throw))
       ((eq? (get-statement-type statement) 'begin)  (m-state-begin  statement state next break continue return throw))
       (else                                         (error "Unknown Control Keyword")))))
-
-
-
-; m-state-body
 
 ; m-state-body-begin
 (define (m-state-body-begin statementlist state next break continue return throw)
@@ -252,20 +246,23 @@
   (not (null? (get-else-not-exist statement))))
 
 (define (m-state-if statement state next break continue return throw)
-  (if (m-bool (get-condition statement) state next break continue return throw)
-      (m-state-body-begin (get-then statement) (m-state (get-condition statement) state next break continue return throw)
-                          next break continue return throw)
+  (if (m-bool (get-condition statement) state)
+      (m-state (get-condition statement) state (lambda (s) (m-state-body-begin (get-then statement) s next break continue return throw))
+                          break continue return throw)
       
       (if (else-exist? statement)
-          (m-state-body-begin (get-else statement) (m-state (get-condition statement)  state next break continue return throw) next break continue return throw)
+          (m-state (get-condition statement) state (lambda (s) (m-state-body-begin (get-else statement) s next break continue return throw))
+                          break continue return throw)
           (m-state (get-condition statement) state next break continue return throw))))
 
 ; while statement handler
 (define (m-state-while statement state next break continue return throw)
-  (if (m-bool (get-condition statement) state next break continue return throw)
-      (m-state-while statement(m-state-body-begin (get-loop-body statement) (m-state (get-condition statement) state next break continue return throw)
-                                                  next break continue return throw)
-                     next break continue return throw)
+  (if (m-bool (get-condition statement) state)
+      (m-state (get-condition statement) state (lambda (s1)
+                                                 (m-state-body-begin (get-loop-body statement) s1 (lambda (s2)
+                                                                                                    (m-state-while statement s2 next break continue return throw))
+                                                                     break continue return throw))
+               break continue return throw)
       (m-state (get-condition statement) state next break continue return throw)))
 
 (define get-loop-body
@@ -278,7 +275,7 @@
   (lambda (statement state next break continue return throw)
     (if (check-for-binding (get-var-name statement) state)
         (error "Variable Already Declared")
-        (add-binding (get-var-name statement) (get-var-value statement state)(m-state (get-var-expression statement) state next break continue return throw)))))
+        (m-state (get-var-expression statement) state (lambda (s) (next (add-binding (get-var-name statement) (get-var-value statement s) s))) break continue return throw))))
 
 (define get-var-name
   (lambda (statement)
@@ -309,7 +306,7 @@
 (define m-state-assign
   (lambda (statement state next break continue return throw)
     (if (check-for-binding (get-assign-name statement) state)
-        (add-binding (get-assign-name statement) (get-assign-value statement state) (m-state (get-second-operand statement) state  next break continue return throw))
+        (m-state (get-second-operand statement) state (lambda (s) (next (add-binding (get-assign-name statement) (get-assign-value statement state) s))) break continue return throw)
         (error "Undeclared Variable"))))
 
 (define get-assign-name
@@ -389,7 +386,7 @@
   (func
    (m-number (get-first-operand expression) state)
    (m-number (get-second-operand expression) (m-state (get-first-operand expression) state
-             (lambda (s) (error "Called next in expression"))
+             identity
              (lambda (s) (error "Called break in expression"))
              (lambda (s) (error "Called continue in expression"))
              (lambda (s) (error "Called return in expression"))
@@ -459,7 +456,7 @@
 
 ; not equals expression evaluator
 (define m-bool-not-equals
-  (lambda (expression state next break continue return throw)
+  (lambda (expression state)
     (not (m-number-helper equal? expression state))))
 
 
@@ -496,7 +493,7 @@
 
 ; not expression handler
 (define m-bool-not
-  (lambda (expression state next break continue return throw)
+  (lambda (expression state)
     (not (m-bool (get-first-operand expression) state))))
 
 
@@ -504,7 +501,7 @@
   (func
    (m-bool (get-first-operand expression) state)
    (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state
-             (lambda (s) (error "Called next in expression"))
+             identity
              (lambda (s) (error "Called break in expression"))
              (lambda (s) (error "Called continue in expression"))
              (lambda (s) (error "Called return in expression"))
@@ -520,4 +517,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-(interpret "test-cases/given-tests/easy-tests/test3.txt")
+(interpret "test-cases/given-tests/hard-tests/test25.txt")
