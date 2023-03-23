@@ -4,7 +4,7 @@
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
-(define KEYWORD_CONTROL        '(var = return if while begin))
+(define KEYWORD_CONTROL        '(var = return if while begin try catch finally))
 (define EMPTY_STATE            '(() ()))
 
 (define NULL 'null)
@@ -26,7 +26,6 @@
     ; (if (check-for-binding RETURN state)
     ; (interpret-return-output (get-binding-value RETURN state))
     (interpreter-helper (cdr statementlist) (m-state (car statementlist) state  next break continue return throw)  next break continue return throw)))
-;)
 
 (define identity
   (lambda (v) v))
@@ -96,6 +95,7 @@
     (list names values)))
 
 ;(define (is-empty-state? state)
+;(state-length state)
 ;(state-length state)
 
 (define (is-last-state? state)
@@ -198,12 +198,15 @@
 (define m-state-control
   (lambda (statement state next break continue return throw)
     (cond
-      ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'return) (m-state-return statement state next break continue return throw))
-      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'if)     (m-state-if     statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'while)  (m-state-while  statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'begin)  (m-state-begin  statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'var)     (m-state-var               statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'return)  (m-state-return            statement state next break continue return throw))
+      ((eq? (get-statement-type statement) '=)       (m-state-assign            statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'if)      (m-state-if                statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'while)   (m-state-while             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'begin)   (m-state-begin             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'try)     (m-state-try-catch-finally statement state next break continue return throw))
+      ;((eq? (get-statement-type statement) 'catch)   (m-state-catch   statement state next break continue return throw))
+      ;((eq? (get-statement-type statement) 'finally) (m-state-finally statement state next break continue return throw))
       (else                                         (error "Unknown Control Keyword")))))
 
 
@@ -234,6 +237,76 @@
 
 (define (get-statement-list statement)
   (cdr statement))
+
+
+;'((var x) (try ((= x 20) (if (< x 10) (throw 10)) (= x (+ x 5))) (catch (e) ((= x e))) (finally ((= x (+ x 100))))) (return x))
+; try statement handler
+(define catch-exist?
+  (lambda (statement)
+    (eq? 'catch (caaddr statement))))
+
+(define finally-exist?
+  (lambda (statement)
+    (if (null? (cdddr statement))
+        (eq? 'finally (caaddr statement))
+        (eq? 'finally (car (cadddr statement))))))
+
+(define get-try-block-statement-list
+  (lambda (statement)
+    (cadr statement)))
+
+(define get-catch-exception-name
+  (lambda (statement)
+    (caadr (caddr statement))))
+
+(define m-state-try-catch-finally
+  (lambda (statement state next break continue return throw)
+    (cond
+      ((and (catch-exist? statement)
+            (finally-exist? statement))  (m-state-try ;both finally and catch
+                                          (get-try-block-statement-list statement)
+                                          state ; doesn't change here
+                                          (m-state-finally state next break continue return throw); new next
+                                          (m-state-finally state break break continue return throw); new break
+                                          (m-state-finally state continue break continue return throw); newcontinue
+                                          (m-state-finally state return break continue return throw); new return
+                                          (m-state-catch                                               ; this throw
+                                           (add-binding (get-catch-exception-name statement) NULL state)
+                                           (m-state-finally state next break continue return throw); new next
+                                           (m-state-finally state break break continue return throw); new break
+                                           (m-state-finally state continue break continue return throw); newcontinue
+                                           (m-state-finally state return break continue return throw); new return
+                                           (m-state-finally state throw break continue return throw)))); new throw
+      ((catch-exist? statement)          (m-state-try ;only catch
+                                          (get-try-block-statement-list statement)
+                                          state next break continue return
+                                          (m-state-catch
+                                           (add-binding (get-catch-exception-name statement) NULL state)
+                                           next break continue return throw)))
+      ((finally-exist? statement)        (m-state-try ;only finally 
+                                          (get-try-block-statement-list statement)
+                                          (m-state-finally state next break continue return throw); new next
+                                          (m-state-finally state break break continue return throw); new break
+                                          (m-state-finally state continue break continue return throw); newcontinue
+                                          (m-state-finally state return break continue return throw); new return
+                                          throw))
+      (else                              (error "Malformed try statement")))))
+
+;;try block handler
+(define m-state-try
+  (lambda (statementlist state next break continue return throw)
+    (m-state-body-begin statementlist state next break continue return throw)))
+
+;; catch block handler
+(define m-state-catch
+  (lambda (statementlist state next break continue return throw)
+    (m-state-body-begin statementlist state next break continue return throw)))
+
+;; finally block handler
+(define m-state-finally
+  (lambda (statementlist state next break continue return throw)
+    (m-state-body-begin statementlist state next break continue return throw)))
+
 
 ; if statement handler
 (define (get-condition statement)
@@ -514,5 +587,5 @@
 
 
 ;(parser "test-cases/given-tests/easy-tests/test16.txt")
-(interpret "test-cases/given-tests/part2-test/test06.txt")
+;(interpret "test-cases/given-tests/easy-tests/test16.txt")
 ;(interpret "test-cases/given-tests/easy-tests/test15.txt")
