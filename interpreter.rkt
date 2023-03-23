@@ -123,10 +123,6 @@
       (return 0)
       (state-length-cps (cdr list) (lambda (v) (return (+ 1 v))))))
 
-;(state-length '(() ()))
-;(state-length '((x) (3)))
-;(state-length '((x c) (3 2)))
-
 ; Add a name-value pair binding to the state, or replce the value if name is already bound
 (define add-binding
   (lambda (name value state)
@@ -138,15 +134,14 @@
       ((and (= 0 (state-length state))
             (is-last-state? state))         (return (make-state (list name) (list value))))
       ((and (not (is-last-state? state))
-            (not (contains? name (get-state-names (get-current-state state))))) (add-binding-cps name value (next-state state)
-                                                                                                 (lambda (v) (return (append (get-current-state state) v)))))
+            (not (contains? name (get-state-names (get-current-state state)))))
+                                            (add-binding-cps name value (next-state state) (lambda (v) (return (append (get-current-state state) v)))))
       ((eq? (car (get-state-names (get-current-state state))) name) (return (append (make-state (get-state-names state) (cons value (cdr (get-state-values state)))) (next-state state))))
-      
-      (else                                     (add-binding-cps name value (append (make-state (cdr (get-state-names (get-current-state state)))
-                                                                                              (cdr (get-state-values (get-current-state state)))) (next-state state))
-                                                             (lambda (v) (return (make-state
-                                                                                  (cons (car (get-state-names  (get-current-state state))) (get-state-names  v))
-                                                                                  (cons (car (get-state-values (get-current-state state))) (get-state-values v))))))))))
+      (else                                 (add-binding-cps name value (append (make-state (cdr (get-state-names (get-current-state state)))
+                                                                        (cdr (get-state-values (get-current-state state)))) (next-state state))
+                                                                                (lambda (v) (return (make-state
+                                                                                    (cons (car (get-state-names  (get-current-state state))) (get-state-names  v))
+                                                                                    (cons (car (get-state-values (get-current-state state))) (get-state-values v))))))))))
 
 ; Get the keyword the defines the statement type from a statement represented by a list
 (define get-statement-type
@@ -157,19 +152,19 @@
 ; === State handler ===
 ; Modify the state by a statement
 (define m-state
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (cond
       ((null? statement)                                                 state)
       ((eq? statement NULL)                                              state)
       ((single-element? statement)                                       state)
-      ((contains? (get-statement-type statement) KEYWORD_MATH_OPERATORS) (m-state-operators statement state))
-      ((contains? (get-statement-type statement) KEYWORD_BOOL_OPERATORS) (m-state-operators statement state))
-      ((contains? (get-statement-type statement) KEYWORD_COMPARATORS)    (m-state-operators statement state))
-      ((contains? (get-statement-type statement) KEYWORD_CONTROL)        (m-state-control   statement state))
+      ((contains? (get-statement-type statement) KEYWORD_MATH_OPERATORS) (m-state-operators statement state next break continue return throw))
+      ((contains? (get-statement-type statement) KEYWORD_BOOL_OPERATORS) (m-state-operators statement state next break continue return throw))
+      ((contains? (get-statement-type statement) KEYWORD_COMPARATORS)    (m-state-operators statement state next break continue return throw))
+      ((contains? (get-statement-type statement) KEYWORD_CONTROL)        (m-state-control   statement state next break continue return throw))
       (else                                                              (error "Unknown keyword")))))
 
 (define m-state-operators
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (if (second-operand-exists? statement)
         (m-state-operators-two statement state)
         (m-state-operators-one statement state))))
@@ -184,7 +179,7 @@
 
 ; === Control flow state handlers ===
 (define m-state-control
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (cond
       ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state))
       ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
@@ -197,11 +192,10 @@
 
 
 ; m-state-body
-
-(define (m-state-body statementlist state)
-  (if (and (null? (cdr statementlist)) (list? (cdr statementlist)))
-      (m-state (car statementlist) state)
-      (m-state-body (cdr statementlist) (m-state (car statementlist) state))))
+(define (m-state-body statementlist state next break continue return throw)
+  (if (null? statementlist)
+      state
+      (m-state (car statementlist) state (lambda (s) (m-state-body (cdr statementlist) s next break continue return throw)) break continue return throw)))
 
 
 ; begin/ {} statement handler
@@ -273,8 +267,8 @@
 
 ; return statement handler
 (define m-state-return
-  (lambda (statement state)
-    (add-binding RETURN (get-return-value statement state) state)))
+  (lambda (statement state next break continue return throw)
+    (return (get-return-value statement state))))
 
 (define get-return-value
   (lambda (statement state)
