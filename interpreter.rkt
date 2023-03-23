@@ -19,13 +19,17 @@
 (provide interpret)
 (define interpret
   (lambda (filename)
-    (interpreter-helper (parser filename) EMPTY_STATE)))
+    (m-state-body (parser filename) EMPTY_STATE  identity identity identity identity identity)))
 
 (define interpreter-helper
-  (lambda (statementlist state)
-    (if (check-for-binding RETURN state)
-        (interpret-return-output (get-binding-value RETURN state))
-        (interpreter-helper (cdr statementlist) (m-state (car statementlist) state)))))
+  (lambda (statementlist state  next break continue return throw)
+   ; (if (check-for-binding RETURN state)
+       ; (interpret-return-output (get-binding-value RETURN state))
+        (interpreter-helper (cdr statementlist) (m-state (car statementlist) state  next break continue return throw)  next break continue return throw)))
+;)
+
+(define identity
+  (lambda (v) v))
 
 (define interpret-return-output
   (lambda (return)
@@ -135,18 +139,25 @@
 (define add-binding-cps
   (lambda (name value state return)
     (cond
-      ((and (= 0 (state-length state))
-            (is-last-state? state))         (return (make-state (list name) (list value))))
       ((and (not (is-last-state? state))
             (not (contains? name (get-state-names (get-current-state state))))) (add-binding-cps name value (next-state state)
                                                                                                  (lambda (v) (return (append (get-current-state state) v)))))
-      ((eq? (car (get-state-names (get-current-state state))) name) (return (append (make-state (get-state-names state) (cons value (cdr (get-state-values state)))) (next-state state))))
+      (else (add-one-state-binding-cps name value (get-current-state state)
+                                       (lambda (v) (return (append v (next-state state)))))))))
       
-      (else                                     (add-binding-cps name value (append (make-state (cdr (get-state-names (get-current-state state)))
-                                                                                              (cdr (get-state-values (get-current-state state)))) (next-state state))
-                                                             (lambda (v) (return (make-state
-                                                                                  (cons (car (get-state-names  (get-current-state state))) (get-state-names  v))
-                                                                                  (cons (car (get-state-values (get-current-state state))) (get-state-values v))))))))))
+(define (add-one-state-binding-cps name value state return)
+  (cond
+    ((and (= 0 (state-length state))
+            (is-last-state? state))         (return (make-state (list name) (list value))))
+    ((eq? (car (get-state-names (get-current-state state))) name) (return (append (make-state (get-state-names (get-current-state state))
+                                                                                              (cons value (cdr (get-state-values (get-current-state state))))) (next-state state))))
+    
+      
+      (else (add-one-state-binding-cps name value (append (make-state (cdr (get-state-names (get-current-state state)))
+                                                      (cdr (get-state-values (get-current-state state)))) (next-state state))
+                       (lambda (v) (return (make-state
+                                            (cons (car (get-state-names  (get-current-state state))) (get-state-names  (get-current-state v)))
+                                            (cons (car (get-state-values (get-current-state state))) (get-state-values (get-current-state v))))))))))
 
 ; Get the keyword the defines the statement type from a statement represented by a list
 (define get-statement-type
@@ -157,51 +168,58 @@
 ; === State handler ===
 ; Modify the state by a statement
 (define m-state
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (cond
       ((null? statement)                                                 state)
       ((eq? statement NULL)                                              state)
       ((single-element? statement)                                       state)
-      ((contains? (get-statement-type statement) KEYWORD_MATH_OPERATORS) (m-state-operators statement state))
-      ((contains? (get-statement-type statement) KEYWORD_BOOL_OPERATORS) (m-state-operators statement state))
-      ((contains? (get-statement-type statement) KEYWORD_COMPARATORS)    (m-state-operators statement state))
-      ((contains? (get-statement-type statement) KEYWORD_CONTROL)        (m-state-control   statement state))
+      ((contains? (get-statement-type statement) KEYWORD_MATH_OPERATORS) (m-state-operators statement state next break continue return throw))
+      ((contains? (get-statement-type statement) KEYWORD_BOOL_OPERATORS) (m-state-operators statement state next break continue return throw))
+      ((contains? (get-statement-type statement) KEYWORD_COMPARATORS)    (m-state-operators statement state next break continue return throw))
+      ((contains? (get-statement-type statement) KEYWORD_CONTROL)        (m-state-control   statement state next break continue return throw))
       (else                                                              (error "Unknown keyword")))))
 
 (define m-state-operators
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (if (second-operand-exists? statement)
-        (m-state-operators-two statement state)
-        (m-state-operators-one statement state))))
+        (m-state-operators-two statement state next break continue return throw)
+        (m-state-operators-one statement state next break continue return throw))))
 
 (define m-state-operators-one
-  (lambda (statement state)
-    (m-state (get-first-operand statement) state)))
+  (lambda (statement state next break continue return throw)
+    (m-state (get-first-operand statement) state next break continue return throw)))
 
 (define m-state-operators-two
-  (lambda (statement state)
-    (m-state (get-second-operand statement) (m-state (get-first-operand statement) state))))
+  (lambda (statement state next break continue return throw)
+    (m-state (get-second-operand statement) (m-state (get-first-operand statement) state next break continue return throw)
+             next break continue return throw)))
 
 ; === Control flow state handlers ===
 (define m-state-control
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (cond
-      ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state))
-      ((eq? (get-statement-type statement) 'return) (m-state-return statement state))
-      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state))
-      ((eq? (get-statement-type statement) 'if)     (m-state-if statement state))
-      ((eq? (get-statement-type statement) 'while)  (m-state-while statement state))
-      ((eq? (get-statement-type statement) 'begin)   (m-state-begin statement state))
+      ((eq? (get-statement-type statement) 'var)    (m-state-var    statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'return) (m-state-return statement state next break continue return throw))
+      ((eq? (get-statement-type statement) '=)      (m-state-assign statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'if)     (m-state-if     statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'while)  (m-state-while  statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'begin)  (m-state-begin  statement state next break continue return throw))
       (else                                         (error "Unknown Control Keyword")))))
 
 
 
 ; m-state-body
 
-(define (m-state-body statementlist state)
-  (if (and (null? (cdr statementlist)) (list? (cdr statementlist)))
-      (m-state (car statementlist) state)
-      (m-state-body (cdr statementlist) (m-state (car statementlist) state))))
+(define (one-statement? statementlist)
+  (or (not (list? (car statementlist))) (null? (cdr statementlist))))
+
+(define (m-state-body statementlist state next break continue return throw)
+  (if (one-statement? statementlist)
+      (if (not (list? (car statementlist)))
+          (m-state statementlist state next break continue return throw)
+          (m-state  (car statementlist) state next break continue return throw))
+      (m-state-body (cdr statementlist) (m-state (car statementlist) state next break continue return throw)
+                    next break continue return throw)))
 
 
 ; begin/ {} statement handler
@@ -229,18 +247,19 @@
 (define (else-exist? statement)
   (not (null? (get-else-not-exist statement))))
 
-(define (m-state-if statement state)
-  (if (m-bool (get-condition statement) state)
-      (m-state (get-then statement) (m-state (get-condition statement) state))
+(define (m-state-if statement state next break continue return throw)
+  (if (m-bool (get-condition statement) state next break continue return throw)
+      (remove-scope (m-state-body (get-then statement) (add-scope (m-state (get-condition statement) state next break continue return throw))
+                                  next break continue return throw))
       
       (if (else-exist? statement)
-          (m-state (get-else statement) (m-state (get-condition statement) state))
-          (m-state (get-condition statement) state))))
+          (remove-scope (m-state-body (get-else statement) (add-scope (m-state (get-condition statement)  state next break continue return throw)) next break continue return throw))
+          (m-state (get-condition statement) state next break continue return throw))))
 
 ; while statement handler
-(define (m-state-while statement state)
+(define (m-state-while statement state next break continue return throw)
   (if (m-bool (get-condition statement) state)
-      (m-state-while statement (m-state (get-loop-body statement) (m-state (get-condition statement) state)))
+      (m-state-while statement (remove-scope (m-state-body (get-loop-body statement) (add-scope (m-state (get-condition statement) state)))))
       (m-state (get-condition statement) state)))
 
 (define get-loop-body
@@ -250,10 +269,10 @@
 
 ; var statement handler
 (define m-state-var
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (if (check-for-binding (get-var-name statement) state)
         (error "Variable Already Declared")
-        (add-binding (get-var-name statement) (get-var-value statement state) (m-state (get-var-expression statement) state)))))
+        (add-binding (get-var-name statement) (get-var-value statement state next break continue return throw)(m-state (get-var-expression statement) state next break continue return throw)))))
 
 (define get-var-name
   (lambda (statement)
@@ -266,25 +285,25 @@
         (caddr statement))))
 
 (define get-var-value
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (if (null? (cddr statement))
         NULL
-        (m-value (get-var-expression statement) state))))
+        (m-value (get-var-expression statement) state next break continue return throw))))
 
 ; return statement handler
 (define m-state-return
-  (lambda (statement state)
-    (add-binding RETURN (get-return-value statement state) state)))
+  (lambda (statement state next break continue return throw)
+    (return (get-return-value statement state next break continue return throw))))
 
 (define get-return-value
-  (lambda (statement state)
-    (m-value (cadr statement) state)))
+  (lambda (statement state next break continue return throw)
+    (m-value (cadr statement) state next break continue return throw)))
 
 ; assign statement handler
 (define m-state-assign
-  (lambda (statement state)
+  (lambda (statement state next break continue return throw)
     (if (check-for-binding (get-assign-name statement) state)
-        (add-binding (get-assign-name statement) (get-assign-value statement state) (m-state (get-second-operand statement) state))
+        (add-binding (get-assign-name statement) (get-assign-value statement state  next break continue return throw) (m-state (get-second-operand statement) state  next break continue return throw))
         (error "Undeclared Variable"))))
 
 (define get-assign-name
@@ -292,15 +311,15 @@
     (cadr statement)))
 
 (define get-assign-value
-  (lambda (statement state)
-        (m-value (get-second-operand statement) state)))
+  (lambda (statement state  next break continue return throw)
+        (m-value (get-second-operand statement) state  next break continue return throw)))
 
 ; === Values expression evaluator
 (define m-value
-  (lambda (expression state)
+  (lambda (expression state next break continue return throw)
     (if (is-bool-expression? expression state)
-        (m-bool   expression state)
-        (m-number expression state))))
+        (m-bool   expression state next break continue return throw)
+        (m-number expression state next break continue return throw))))
 
 ; Get the operator from a expression represented by a list
 (define get-operator
@@ -339,59 +358,60 @@
 
 ; === Numerical expression evaluator ===
 (define m-number
-  (lambda (expression state)
+  (lambda (expression state next break continue return throw)
     (cond
-      ((is-bool-expression? expression state)                       (if (m-bool expression state) 1 0))  ; Cast bool to number
+      ((is-bool-expression? expression state)                       (if (m-bool expression state next break continue return throw) 1 0))  ; Cast bool to number
       ((number? expression)                                         expression)
       ((check-for-binding expression state)                         (get-binding-value expression state))
       ((single-element? expression)                                 (error "Undeclared Variable"))
-      ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state))
-      ((eq? (get-operator expression) '=)                           (m-number-assign expression state))
+      ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state next break continue return throw))
+      ((eq? (get-operator expression) '=)                           (m-number-assign expression state next break continue return throw))
       (else                                                         (error "This isn't a numerical expression")))))
 
 
 ; === Numerical expression evaluators ===
 (define m-number-math-operators
-  (lambda (expression state)
+  (lambda (expression state next break continue return throw)
     (cond
-      ((eq? (get-operator expression) '+) (m-number-addition       expression state))
-      ((eq? (get-operator expression) '-) (m-number-subtraction    expression state))
-      ((eq? (get-operator expression) '*) (m-number-multiplication expression state))
-      ((eq? (get-operator expression) '/) (m-number-division       expression state))
-      ((eq? (get-operator expression) '%) (m-number-modulus        expression state)))))
+      ((eq? (get-operator expression) '+) (m-number-addition       expression state next break continue return throw))
+      ((eq? (get-operator expression) '-) (m-number-subtraction    expression state next break continue return throw))
+      ((eq? (get-operator expression) '*) (m-number-multiplication expression state next break continue return throw))
+      ((eq? (get-operator expression) '/) (m-number-division       expression state next break continue return throw))
+      ((eq? (get-operator expression) '%) (m-number-modulus        expression state next break continue return throw)))))
 
-(define (m-number-helper func expression state)
+(define (m-number-helper func expression state next break continue return throw)
   (func
-   (m-number (get-first-operand expression)  state)
-     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state))))
+   (m-number (get-first-operand expression) state next break continue return throw)
+     (m-number (get-second-operand expression) (m-state (get-first-operand expression) state next break continue return throw)
+               next break continue return throw)))
    
 ; addition expression evaluator
 (define m-number-addition
-  (lambda (expression state)
-    (m-number-helper + expression state)))
+  (lambda (expression state next break continue return throw)
+    (m-number-helper + expression state next break continue return throw)))
 ; subtraction expresion evaluator
 (define m-number-subtraction
-  (lambda (expression state)
+  (lambda (expression state next break continue return throw)
     (if (second-operand-exists? expression)
         ; Subtraction
-       (m-number-helper - expression state)
+       (m-number-helper - expression state next break continue return throw)
         ; Unary
-        (- 0 (m-number (get-first-operand expression) state)))))
+        (- 0 (m-number (get-first-operand expression) state next break continue return throw)))))
 
 ; multiplication expresion evaluator
 (define m-number-multiplication
-  (lambda (expression state)
-   (m-number-helper * expression state)))
+  (lambda (expression state next break continue return throw)
+   (m-number-helper * expression state next break continue return throw)))
 
 ; division expresion evaluator
 (define m-number-division
-  (lambda (expression state)
-    (m-number-helper quotient expression state)))
+  (lambda (expression state next break continue return throw)
+    (m-number-helper quotient expression state next break continue return throw)))
 
 ; modulus expresion evaluator
 (define m-number-modulus
-  (lambda (expression state)
-     (m-number-helper modulo expression state)))
+  (lambda (expression state next break continue return throw)
+     (m-number-helper modulo expression state next break continue return throw)))
 
 
 ; assignment expression evaluator
@@ -401,86 +421,92 @@
 
 ; === Boolean expression evaluator ===
 (define m-bool
-  (lambda (expression state)
+  (lambda (expression state next break continue return throw)
     (cond
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
       ((check-for-binding expression state)                         (get-binding-value      expression state))
       ((single-element? expression)                                 (error "Undeclared Variable"))
-      ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state))
-      ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state))
+      ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state next break continue return throw))
+      ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state next break continue return throw))
       (else                                                         (error "This isn't a boolean expression")))))
 
 ; === Comparison operator expression evaluator ===
 (define m-bool-comparators
-  (lambda (expression state)
+  (lambda (expression state next break continue return throw)
     (cond
-      ((eq? (get-operator expression) '==) (m-bool-equals              expression state))
-      ((eq? (get-operator expression) '!=) (m-bool-not-equals          expression state))
-      ((eq? (get-operator expression) '<)  (m-bool-less-than           expression state))
-      ((eq? (get-operator expression) '>)  (m-bool-greater-than        expression state))
-      ((eq? (get-operator expression) '<=) (m-bool-less-than-equals    expression state))
-      ((eq? (get-operator expression) '>=) (m-bool-greater-than-equals expression state)))))
+      ((eq? (get-operator expression) '==) (m-bool-equals              expression state next break continue return throw))
+      ((eq? (get-operator expression) '!=) (m-bool-not-equals          expression state next break continue return throw))
+      ((eq? (get-operator expression) '<)  (m-bool-less-than           expression state next break continue return throw))
+      ((eq? (get-operator expression) '>)  (m-bool-greater-than        expression state next break continue return throw))
+      ((eq? (get-operator expression) '<=) (m-bool-less-than-equals    expression state next break continue return throw))
+      ((eq? (get-operator expression) '>=) (m-bool-greater-than-equals expression state next break continue return throw)))))
 
 ; equals expression evaluator
 (define m-bool-equals
-  (lambda (expression state)
-     (m-number-helper equal? expression state)))
+  (lambda (expression state next break continue return throw)
+     (m-number-helper equal? expression state next break continue return throw)))
 
 ; not equals expression evaluator
 (define m-bool-not-equals
-  (lambda (expression state)
-    (not (m-number-helper equal? expression state))))
+  (lambda (expression state next break continue return throw)
+    (not (m-number-helper equal? expression state next break continue return throw))))
 
 
 ; less than expression evaluator
 (define m-bool-less-than
-  (lambda (expression state)
-    (m-number-helper < expression state)))
+  (lambda (expression state next break continue return throw)
+    (m-number-helper < expression state next break continue return throw)))
 
 
 ; greater than expression evaluator
 (define m-bool-greater-than
-  (lambda (expression state)
-   (m-number-helper > expression state)))
+  (lambda (expression state next break continue return throw)
+   (m-number-helper > expression state next break continue return throw)))
 
 
 ; less than or equal to expression evaluator
 (define m-bool-less-than-equals
-  (lambda (expression state)
-   (m-number-helper <= expression state)))
+  (lambda (expression state next break continue return throw)
+   (m-number-helper <= expression state next break continue return throw)))
        
 
 ; greater than or equal to expression evaluator
 (define m-bool-greater-than-equals
-  (lambda (expression state)
-   (m-number-helper >= expression state)))
+  (lambda (expression state next break continue return throw)
+   (m-number-helper >= expression state next break continue return throw)))
 
 ; === Boolean operator expression handlers ===
 (define m-bool-bool-operators
-  (lambda (expression state)
+  (lambda (expression state next break continue return throw)
     (cond
-      ((eq? (get-operator expression) '!)  (m-bool-not expression state))
-      ((eq? (get-operator expression) '&&) (m-bool-and expression state))
-      ((eq? (get-operator expression) '||) (m-bool-or  expression state)))))
+      ((eq? (get-operator expression) '!)  (m-bool-not expression state next break continue return throw))
+      ((eq? (get-operator expression) '&&) (m-bool-and expression state next break continue return throw))
+      ((eq? (get-operator expression) '||) (m-bool-or  expression state next break continue return throw)))))
 
 ; not expression handler
 (define m-bool-not
-  (lambda (expression state)
-    (not (m-bool (get-first-operand expression) state))))
+  (lambda (expression state next break continue return throw)
+    (not (m-bool (get-first-operand expression) state next break continue return throw))))
 
 
-(define (m-bool-helper func expression state)
+(define (m-bool-helper func expression state next break continue return throw)
   (func
-   (m-bool (get-first-operand expression)  state)
-   (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state))))
+   (m-bool (get-first-operand expression)  state next break continue return throw)
+   (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state next break continue return throw)
+           next break continue return throw)))
 
 ; and expression handler
 (define m-bool-and
-  (lambda (expression state)
-    (m-bool-helper (lambda (a b) (and a b)) expression state)))
+  (lambda (expression state next break continue return throw)
+    (m-bool-helper (lambda (a b) (and a b)) expression state next break continue return throw)))
 
 ; or expression handler
 (define m-bool-or
-  (lambda (expression state)
-      (m-bool-helper (lambda (a b) (or a b)) expression state)))
+  (lambda (expression state next break continue return throw)
+      (m-bool-helper (lambda (a b) (or a b)) expression state next break continue return throw)))
+
+
+;(parser "test-cases/given-tests/easy-tests/test16.txt")
+(interpret "test-cases/given-tests/easy-tests/test16.txt")
+;(interpret "test-cases/given-tests/easy-tests/test15.txt")
