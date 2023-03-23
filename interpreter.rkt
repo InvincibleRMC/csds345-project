@@ -91,6 +91,14 @@
   (lambda (names values)
     (list names values)))
 
+;(define (is-empty-state? state)
+  ;(state-length state)
+
+(define (is-last-state? state)
+  (and (list? (car state)) (list? (cadr state)) (null? (cddr state))))
+
+;(is-last-state? (append EMPTY_STATE '((b c d) (2 3 4))))
+;(is-last-state? (remove-scope(append EMPTY_STATE '((b c d) (2 3 4)))))
 ; Check whether a name is bound
 (define check-for-binding
   (lambda (name state)
@@ -106,6 +114,19 @@
       ((eq? (car (get-state-names state)) name) (car (get-state-values state)))
       (else                                     (get-binding-value name (make-state (cdr (get-state-names state)) (cdr (get-state-values state))))))))
 
+; helper
+(define (state-length state)
+  (state-length-cps (car state) (lambda (v) v)))
+
+(define (state-length-cps list return)
+  (if (null? list)
+      (return 0)
+      (state-length-cps (cdr list) (lambda (v) (return (+ 1 v))))))
+
+;(state-length '(() ()))
+;(state-length '((x) (3)))
+;(state-length '((x c) (3 2)))
+
 ; Add a name-value pair binding to the state, or replce the value if name is already bound
 (define add-binding
   (lambda (name value state)
@@ -114,12 +135,18 @@
 (define add-binding-cps
   (lambda (name value state return)
     (cond
-      ((null? (get-state-names state))          (return (make-state (list name) (list value))))
-      ((eq? (car (get-state-names state)) name) (return (make-state (get-state-names state) (cons value (cdr (get-state-values state))))))
-      (else                                     (add-binding-cps name value (make-state (cdr (get-state-names state)) (cdr (get-state-values state)))
+      ((and (= 0 (state-length state))
+            (is-last-state? state))         (return (make-state (list name) (list value))))
+      ((and (not (is-last-state? state))
+            (not (contains? name (get-state-names (get-current-state state))))) (add-binding-cps name value (next-state state)
+                                                                                                 (lambda (v) (return (append (get-current-state state) v)))))
+      ((eq? (car (get-state-names (get-current-state state))) name) (return (append (make-state (get-state-names state) (cons value (cdr (get-state-values state)))) (next-state state))))
+      
+      (else                                     (add-binding-cps name value (append (make-state (cdr (get-state-names (get-current-state state)))
+                                                                                              (cdr (get-state-values (get-current-state state)))) (next-state state))
                                                              (lambda (v) (return (make-state
-                                                                                  (cons (car (get-state-names  state)) (get-state-names  v))
-                                                                                  (cons (car (get-state-values state)) (get-state-values v))))))))))
+                                                                                  (cons (car (get-state-names  (get-current-state state))) (get-state-names  v))
+                                                                                  (cons (car (get-state-values (get-current-state state))) (get-state-values v))))))))))
 
 ; Get the keyword the defines the statement type from a statement represented by a list
 (define get-statement-type
@@ -168,9 +195,18 @@
       (else                                         (error "Unknown Control Keyword")))))
 
 
+
+; m-state-body
+
+(define (m-state-body statementlist state)
+  (if (and (null? (cdr statementlist)) (list? (cdr statementlist)))
+      (m-state (car statementlist) state)
+      (m-state-body (cdr statementlist) (m-state (car statementlist) state))))
+
+
 ; begin/ {} statement handler
 (define (m-state-begin statement state)
-     (remove-scope (interpreter-helper (get-statement-list statement) (add-scope state))))
+     (remove-scope (m-state-body (get-statement-list statement) (add-scope state))))
        
 
    ;

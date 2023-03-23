@@ -10,6 +10,7 @@
 ;--------------------
 ; Easy Tests
 ;--------------------
+
 (assert "test-cases/given-tests/easy-tests/test1.txt" 150)
 (assert "test-cases/given-tests/easy-tests/test2.txt" -4)
 (assert "test-cases/given-tests/easy-tests/test3.txt" 10)
@@ -64,6 +65,7 @@
 (assert "test-cases/Levi-Noah-Michael-test/test31.txt" TRUE)
 (assert "test-cases/Levi-Noah-Michael-test/test32.txt" TRUE)
 (assert "test-cases/Levi-Noah-Michael-test/test33.txt" FALSE)
+
 
 ;--------------------
  ; Part2 Tests
