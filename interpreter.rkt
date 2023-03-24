@@ -248,7 +248,9 @@
   (caddr (caddr statement)))
 
 (define (get-finally-block-statement-list statement)
-  (cadr (cadddr statement)))
+    (if (null? (cdddr statement))
+        (caadr (caddr statement))
+        (cadar (cdddr statement))))
 
 (define get-catch-exception-name
   (lambda (statement)
