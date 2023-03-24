@@ -248,9 +248,9 @@
   (caddr (caddr statement)))
 
 (define (get-finally-block-statement-list statement)
-    (if (null? (cdddr statement))
-        (caadr (caddr statement))
-        (cadar (cdddr statement))))
+  (if (null? (cdddr statement))
+      (caadr (caddr statement))
+      (cadar (cdddr statement))))
 
 (define get-catch-exception-name
   (lambda (statement)
@@ -263,31 +263,31 @@
             (finally-exist? statement))  (m-state-try ;both finally and catch
                                           (get-try-block-statement-list statement)
                                           state ; doesn't change here
-                                          (m-state-finally (get-finally-block-statement-list statement) state next break continue return throw); new next
-                                          (m-state-finally (get-finally-block-statement-list statement) state break break continue return throw); new break
-                                          (m-state-finally (get-finally-block-statement-list statement) state continue break continue return throw); newcontinue
-                                          (m-state-finally (get-finally-block-statement-list statement) state return break continue return throw); new return
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) next break continue return throw); new next
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) break break continue return throw); new break
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) continue break continue return throw); newcontinue
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) return break continue return throw); new return
                                           (m-state-catch                                               ; this throw
                                            (get-catch-block-statement-list statement)
-                                           (add-binding (get-catch-exception-name statement) NULL state)
-                                           (m-state-finally (get-finally-block-statement-list statement) state next break continue return throw); new next
-                                           (m-state-finally (get-finally-block-statement-list statement) state break break continue return throw); new break
-                                           (m-state-finally (get-finally-block-statement-list statement) state continue break continue return throw); newcontinue
-                                           (m-state-finally (get-finally-block-statement-list statement) state return break continue return throw); new return
-                                           (m-state-finally (get-finally-block-statement-list statement) state throw break continue return throw)))); new throw
+                                           (add-binding (get-catch-exception-name statement) NULL (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw))
+                                           (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) next break continue return throw); new next
+                                           (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) break break continue return throw); new break
+                                           (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) continue break continue return throw); newcontinue
+                                           (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) return break continue return throw); new return
+                                           (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) throw break continue return throw)))); new throw
       ((catch-exist? statement)          (m-state-try ;only catch
                                           (get-try-block-statement-list statement)
                                           state next break continue return
                                           (m-state-catch
                                            (get-catch-block-statement-list statement)
-                                           (add-binding (get-catch-exception-name statement) NULL state)
+                                           (add-binding (get-catch-exception-name statement) NULL (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw))
                                            next break continue return throw)))
       ((finally-exist? statement)        (m-state-try ;only finally 
                                           (get-try-block-statement-list statement)
-                                          (m-state-finally (get-finally-block-statement-list statement) state next break continue return throw); new next
-                                          (m-state-finally (get-finally-block-statement-list statement) state break break continue return throw); new break
-                                          (m-state-finally (get-finally-block-statement-list statement) state continue break continue return throw); newcontinue
-                                          (m-state-finally (get-finally-block-statement-list statement) state return break continue return throw); new return
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) next break continue return throw); new next
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) break break continue return throw); new break
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) continue break continue return throw); newcontinue
+                                          (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) return break continue return throw); new return
                                           throw))
       (else                              (error "Malformed try statement")))))
 
@@ -295,6 +295,10 @@
 (define m-state-try
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state next break continue return throw)))
+
+(define m-state-try-side-effects
+  (lambda (statementlist state next break continue return throw)
+    (m-state-body-begin statementlist state identity identity identity identity identity)))
 
 (define (m-state-try-side-effect statementlist state)
   (m-state-try statementlist state identity identity identity identity identity)) 
