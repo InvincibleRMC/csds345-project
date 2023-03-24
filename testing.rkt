@@ -86,9 +86,12 @@
 (assert "test-cases/given-tests/part2-test/test09.txt" -1)
 (assert "test-cases/given-tests/part2-test/test10.txt" 789)
 ; Error test 11, 12, 13
-(assert "test-cases/given-tests/part2-test/test11.txt" 150)
-(assert "test-cases/given-tests/part2-test/test12.txt" -4)
-(assert "test-cases/given-tests/part2-test/test13.txt" 10)
+;(interpret "test-cases/given-tests/part2-test/test11.txt")
+;(error "Undeclared Variable")
+;(interpret "test-cases/given-tests/part2-test/test12.txt")
+;(error "Undeclared Variable")
+;(interpret "test-cases/given-tests/part2-test/test12.txt")
+;(error "Break outside of loop")
 
 (assert "test-cases/given-tests/part2-test/test14.txt" 12)
 (assert "test-cases/given-tests/part2-test/test15.txt" 125)

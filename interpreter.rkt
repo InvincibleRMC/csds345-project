@@ -4,7 +4,7 @@
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
-(define KEYWORD_CONTROL        '(var = return if while begin try catch finally))
+(define KEYWORD_CONTROL        '(var = return if while begin try catch finally break continue throw))
 (define EMPTY_STATE            '(() ()))
 
 (define NULL 'null)
@@ -126,10 +126,6 @@
       (return 0)
       (state-length-cps (cdr list) (lambda (v) (return (+ 1 v))))))
 
-;(state-length '(() ()))
-;(state-length '((x) (3)))
-;(state-length '((x c) (3 2)))
-
 ; Add a name-value pair binding to the state, or replce the value if name is already bound
 (define add-binding
   (lambda (name value state)
@@ -162,7 +158,6 @@
 (define get-statement-type
   (lambda (statement)
     (car statement)))
-
 
 ; === State handler ===
 ; Modify the state by a statement
@@ -204,8 +199,10 @@
       ((eq? (get-statement-type statement) 'while)   (m-state-while             statement state next break continue return throw))
       ((eq? (get-statement-type statement) 'begin)   (m-state-begin             statement state next break continue return throw))
       ((eq? (get-statement-type statement) 'try)     (m-state-try-catch-finally statement state next break continue return throw))
-      ;((eq? (get-statement-type statement) 'catch)   (m-state-catch   statement state next break continue return throw))
-      ;((eq? (get-statement-type statement) 'finally) (m-state-finally statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'continue)(m-state-continue          statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'break)   (m-state-break             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'throw)   (m-state-throw             statement state next break continue return throw))
+      
       (else                                         (error "Unknown Control Keyword")))))
 
 ; m-state-body-begin
@@ -238,8 +235,6 @@
 (define (get-statement-list statement)
   (cdr statement))
 
-
-;'((var x) (try ((= x 20) (if (< x 10) (throw 10)) (= x (+ x 5))) (catch (e) ((= x e))) (finally ((= x (+ x 100))))) (return x))
 ; try statement handler
 (define catch-exist?
   (lambda (statement)
@@ -307,6 +302,20 @@
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state next break continue return throw)))
 
+; continue
+(define m-state-continue
+  (lambda (statementlist state next break continue return throw)
+    (continue state)))
+
+; break
+(define m-state-break
+  (lambda (statementlist state next break continue return throw)
+    (break state)))
+
+; throw
+(define m-state-throw
+  (lambda (statementlist state next break continue return throw)
+    (throw state)))
 
 ; if statement handler
 (define (get-condition statement)
@@ -340,12 +349,13 @@
       (m-state (get-condition statement) state (lambda (s1)
                                                  (m-state-body-begin (get-loop-body statement) s1 (lambda (s2)
                                                                                                     (m-state-while statement s2 next break continue return throw))
-                                                                     break continue return throw))
-               break continue return throw)
-      (m-state (get-condition statement) state next break continue return throw)))
+                                                                     next (lambda (s3)
+                                                                            (m-state-while statement s3 next break continue return throw)) return throw))
+                                                 break continue return throw)
+               (m-state (get-condition statement) state next break continue return throw)))
 
-(define get-loop-body
-  (lambda (statement)
+  (define get-loop-body
+    (lambda (statement)
     (caddr statement)))
 
 
