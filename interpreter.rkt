@@ -207,7 +207,7 @@
                     (lambda (s) (next (remove-scope s)))
                     (lambda (s) (break (remove-scope s)))
                     (lambda (s) (continue (remove-scope s)))
-                    return
+                    (lambda (s v) (return (remove-scope s) v))
                     (lambda (s v) (throw (remove-scope s) v)))))
 
 (define (one-statement? statementlist)
@@ -672,3 +672,4 @@
 
 
 (interpret "test-cases/given-tests/part2-test/test17.txt")
+(interpret "test-cases/given-tests/part2-test/test19.txt")
