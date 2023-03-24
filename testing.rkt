@@ -99,7 +99,7 @@
 (assert "test-cases/given-tests/part2-test/test17.txt" 2000400)
 (assert "test-cases/given-tests/part2-test/test18.txt" 101)
 ; Error test 19
-(assert "test-cases/given-tests/part2-test/test19.txt" 5)
-
+;(interpret "test-cases/given-tests/part2-test/test19.txt" 5)
+;(error "Error thrown without catch")
 (assert "test-cases/given-tests/part2-test/test20.txt" 21)
 

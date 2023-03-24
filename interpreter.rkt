@@ -202,7 +202,7 @@
 ; m-state-body-begin
 (define (m-state-body-begin statementlist state next break continue return throw)
   (if (null? statementlist)
-      state
+      (next state)
       (m-state-body statementlist (add-scope state)
                     (lambda (s) (next (remove-scope s)))
                     (lambda (s) (break (remove-scope s)))
@@ -669,7 +669,3 @@
 (define m-bool-or
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
-
-
-(interpret "test-cases/given-tests/part2-test/test17.txt")
-(interpret "test-cases/given-tests/part2-test/test19.txt")
