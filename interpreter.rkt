@@ -23,8 +23,8 @@
                   (lambda (s) (error "No return statement"))
                   (lambda (s) (error "Break outside of loop"))
                   (lambda (s) (error "Continue outside of loop"))
-                  (lambda (v) (interpret-return-output v))
-                  (lambda (s) (error "Error thrown without catch")))))
+                  (lambda (s v) (interpret-return-output v))
+                  (lambda (s v) (error "Error thrown without catch")))))
 
 (define identity
   (lambda (v) v))
@@ -96,8 +96,6 @@
 (define (is-last-state? state)
   (and (list? (car state)) (list? (cadr state)) (null? (cddr state))))
 
-;(is-last-state? (append EMPTY_STATE '((b c d) (2 3 4))))
-;(is-last-state? (remove-scope(append EMPTY_STATE '((b c d) (2 3 4)))))
 ; Check whether a name is bound
 (define check-for-binding
   (lambda (name state)
@@ -203,12 +201,14 @@
 
 ; m-state-body-begin
 (define (m-state-body-begin statementlist state next break continue return throw)
-  (m-state-body statementlist (add-scope state)
-                (lambda (s) (next (remove-scope s)))
-                (lambda (s) (break (remove-scope s)))
-                (lambda (s) (continue (remove-scope s)))
-                return
-                (lambda (s) (throw (remove-scope s)))))
+  (if (null? statementlist)
+      state
+      (m-state-body statementlist (add-scope state)
+                    (lambda (s) (next (remove-scope s)))
+                    (lambda (s) (break (remove-scope s)))
+                    (lambda (s) (continue (remove-scope s)))
+                    return
+                    (lambda (s v) (throw (remove-scope s) v)))))
 
 (define (one-statement? statementlist)
   (or (not (list? (car statementlist))) (null? (cdr statementlist))))
@@ -236,7 +236,7 @@
 
 (define finally-exist?
   (lambda (statement)
-    (if (null? (cdddr statement))
+    (if (null? (cadddr statement))
         (eq? 'finally (caaddr statement))
         (eq? 'finally (car (cadddr statement))))))
 
@@ -245,17 +245,22 @@
     (cadr statement)))
 
 (define (get-catch-block-statement-list statement)
-  (caddr (caddr statement)))
+  (if catch-exist?
+      (caddr (caddr statement))
+      '()))
 
 (define (get-finally-block-statement-list statement)
-  (if (null? (cdddr statement))
-      (caadr (caddr statement))
-      (cadar (cdddr statement))))
+  (if (finally-exist? statement)
+      (if (null? (cdddr statement))
+          (caadr (caddr statement))
+          (cadar (cdddr statement)))
+      '()))
 
 (define get-catch-exception-name
   (lambda (statement)
     (caadr (caddr statement))))
 
+#|
 (define m-state-try-catch-finally
   (lambda (statement state next break continue return throw)
     (cond
@@ -317,6 +322,22 @@
                                           (m-state-finally (get-finally-block-statement-list statement) (m-state-try-side-effects (get-try-block-statement-list statement) state next break continue return throw) return break continue return throw); new return
                                           throw))
       (else                              (error "Malformed try statement")))))
+|#
+
+(define m-state-try-catch-finally
+  (lambda (statement state next break continue return throw)
+    (m-state-try (get-try-block-statement-list statement) state
+                 (lambda (s) (m-state-finally (get-finally-block-statement-list statement) s next break continue return throw)) ; new next
+                 (lambda (s) (m-state-finally (get-finally-block-statement-list statement) s break break continue return throw)); new break
+                 (lambda (s) (m-state-finally (get-finally-block-statement-list statement) s continue break continue return throw)); new continue
+                 (lambda (s1 v) (m-state-finally (get-finally-block-statement-list statement) s1 (lambda (s2) (return s2 v)) break continue return throw))
+                 (lambda (s1 v) (m-state-catch (get-catch-block-statement-list statement) (add-binding (get-catch-exception-name statement) v s1)
+                                               (lambda (s2) (m-state-finally (get-finally-block-statement-list statement) s2 next break continue return throw))
+                                               (lambda (s2) (m-state-finally (get-finally-block-statement-list statement) s2 break break continue return throw))
+                                               (lambda (s2) (m-state-finally (get-finally-block-statement-list statement) s2 continue break continue return throw))
+                                               (lambda (s2 v2) (m-state-finally (get-finally-block-statement-list statement) s2 (lambda (s3) (return s3 v2)) break continue return throw))
+                                               (lambda (s2 v2) (m-state-finally (get-finally-block-statement-list statement) s2 (lambda (s3) (throw s3 v2)) break continue return throw)))))))
+      
 
 ;;try block handler
 (define m-state-try
@@ -326,6 +347,7 @@
 (define m-state-try-side-effects
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state identity identity identity identity identity)))
+
 ;; catch block handler
 (define m-state-catch
   (lambda (statementlist state next break continue return throw)
@@ -334,6 +356,7 @@
 (define m-state-catch-side-effects
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state identity identity identity identity identity)))
+
 ;; finally block handler
 (define m-state-finally
   (lambda (statementlist state next break continue return throw)
@@ -350,9 +373,13 @@
     (break state)))
 
 ; throw
+(define get-throw-value
+  (lambda (statement state)
+    (m-value (cadr statement) state)))
+
 (define m-state-throw
   (lambda (statementlist state next break continue return throw)
-    (throw state)))
+    (throw state (get-throw-value statementlist state))))
 
 ; if statement handler
 (define (get-condition statement)
@@ -422,7 +449,7 @@
 ; return statement handler
 (define m-state-return
   (lambda (statement state next break continue return throw)
-    (return (get-return-value statement state))))
+    (return state (get-return-value statement state))))
 
 (define get-return-value
   (lambda (statement state)
@@ -644,4 +671,4 @@
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
 
-;(interpret "test-cases/given-tests/part2-test/test15.txt")
+(interpret "test-cases/given-tests/part2-test/test17.txt")
