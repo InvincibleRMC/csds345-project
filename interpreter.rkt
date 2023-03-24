@@ -93,10 +93,6 @@
   (lambda (names values)
     (list names values)))
 
-;(define (is-empty-state? state)
-;(state-length state)
-;(state-length state)
-
 (define (is-last-state? state)
   (and (list? (car state)) (list? (cadr state)) (null? (cddr state))))
 
@@ -223,14 +219,12 @@
           (m-state statementlist state next break continue return throw)
           (m-state  (car statementlist) state next break continue return throw))
       (m-state (car statementlist) state (lambda (s) (m-state-body (cdr statementlist) s next break continue return throw))
-                    break continue return throw)))
+               break continue return throw)))
 
 
 ; begin/ {} statement handler
 (define (m-state-begin statement state next break continue return throw)
   (m-state-body-begin (get-statement-list statement) state next break continue return throw))
-       
-
 
 (define (get-statement-list statement)
   (cdr statement))
@@ -250,6 +244,12 @@
   (lambda (statement)
     (cadr statement)))
 
+(define (get-catch-block-statement-list statement)
+  (caddr (caddr statement)))
+
+(define (get-finally-block-statement-list statement)
+  (cadr (cadddr statement)))
+
 (define get-catch-exception-name
   (lambda (statement)
     (caadr (caddr statement))))
@@ -261,29 +261,31 @@
             (finally-exist? statement))  (m-state-try ;both finally and catch
                                           (get-try-block-statement-list statement)
                                           state ; doesn't change here
-                                          (m-state-finally state next break continue return throw); new next
-                                          (m-state-finally state break break continue return throw); new break
-                                          (m-state-finally state continue break continue return throw); newcontinue
-                                          (m-state-finally state return break continue return throw); new return
+                                          (m-state-finally (get-finally-block-statement-list statement) state next break continue return throw); new next
+                                          (m-state-finally (get-finally-block-statement-list statement) state break break continue return throw); new break
+                                          (m-state-finally (get-finally-block-statement-list statement) state continue break continue return throw); newcontinue
+                                          (m-state-finally (get-finally-block-statement-list statement) state return break continue return throw); new return
                                           (m-state-catch                                               ; this throw
+                                           (get-catch-block-statement-list statement)
                                            (add-binding (get-catch-exception-name statement) NULL state)
-                                           (m-state-finally state next break continue return throw); new next
-                                           (m-state-finally state break break continue return throw); new break
-                                           (m-state-finally state continue break continue return throw); newcontinue
-                                           (m-state-finally state return break continue return throw); new return
-                                           (m-state-finally state throw break continue return throw)))); new throw
+                                           (m-state-finally (get-finally-block-statement-list statement) state next break continue return throw); new next
+                                           (m-state-finally (get-finally-block-statement-list statement) state break break continue return throw); new break
+                                           (m-state-finally (get-finally-block-statement-list statement) state continue break continue return throw); newcontinue
+                                           (m-state-finally (get-finally-block-statement-list statement) state return break continue return throw); new return
+                                           (m-state-finally (get-finally-block-statement-list statement) state throw break continue return throw)))); new throw
       ((catch-exist? statement)          (m-state-try ;only catch
                                           (get-try-block-statement-list statement)
                                           state next break continue return
                                           (m-state-catch
+                                           (get-catch-block-statement-list statement)
                                            (add-binding (get-catch-exception-name statement) NULL state)
                                            next break continue return throw)))
       ((finally-exist? statement)        (m-state-try ;only finally 
                                           (get-try-block-statement-list statement)
-                                          (m-state-finally state next break continue return throw); new next
-                                          (m-state-finally state break break continue return throw); new break
-                                          (m-state-finally state continue break continue return throw); newcontinue
-                                          (m-state-finally state return break continue return throw); new return
+                                          (m-state-finally (get-finally-block-statement-list statement) state next break continue return throw); new next
+                                          (m-state-finally (get-finally-block-statement-list statement) state break break continue return throw); new break
+                                          (m-state-finally (get-finally-block-statement-list statement) state continue break continue return throw); newcontinue
+                                          (m-state-finally (get-finally-block-statement-list statement) state return break continue return throw); new return
                                           throw))
       (else                              (error "Malformed try statement")))))
 
@@ -292,6 +294,8 @@
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state next break continue return throw)))
 
+(define (m-state-try-side-effect statementlist state)
+  (m-state-try statementlist state identity identity identity identity identity)) 
 ;; catch block handler
 (define m-state-catch
   (lambda (statementlist state next break continue return throw)
@@ -336,11 +340,11 @@
 (define (m-state-if statement state next break continue return throw)
   (if (m-bool (get-condition statement) state)
       (m-state (get-condition statement) state (lambda (s) (m-state-body-begin (get-then statement) s next break continue return throw))
-                          break continue return throw)
+               break continue return throw)
       
       (if (else-exist? statement)
           (m-state (get-condition statement) state (lambda (s) (m-state-body-begin (get-else statement) s next break continue return throw))
-                          break continue return throw)
+                   break continue return throw)
           (m-state (get-condition statement) state next break continue return throw))))
 
 ; while statement handler
@@ -351,11 +355,11 @@
                                                                                                     (m-state-while statement s2 next break continue return throw))
                                                                      next (lambda (s3)
                                                                             (m-state-while statement s3 next break continue return throw)) return throw))
-                                                 break continue return throw)
-               (m-state (get-condition statement) state next break continue return throw)))
+               break continue return throw)
+      (m-state (get-condition statement) state next break continue return throw)))
 
-  (define get-loop-body
-    (lambda (statement)
+(define get-loop-body
+  (lambda (statement)
     (caddr statement)))
 
 
@@ -475,11 +479,11 @@
   (func
    (m-number (get-first-operand expression) state)
    (m-number (get-second-operand expression) (m-state (get-first-operand expression) state
-             identity
-             (lambda (s) (error "Called break in expression"))
-             (lambda (s) (error "Called continue in expression"))
-             (lambda (s) (error "Called return in expression"))
-             (lambda (s) (error "Called throw in expression"))))))
+                                                      identity
+                                                      (lambda (s) (error "Called break in expression"))
+                                                      (lambda (s) (error "Called continue in expression"))
+                                                      (lambda (s) (error "Called return in expression"))
+                                                      (lambda (s) (error "Called throw in expression"))))))
    
 ; addition expression evaluator
 (define m-number-addition
@@ -590,11 +594,11 @@
   (func
    (m-bool (get-first-operand expression) state)
    (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state
-             identity
-             (lambda (s) (error "Called break in expression"))
-             (lambda (s) (error "Called continue in expression"))
-             (lambda (s) (error "Called return in expression"))
-             (lambda (s) (error "Called throw in expression"))))))
+                                                    identity
+                                                    (lambda (s) (error "Called break in expression"))
+                                                    (lambda (s) (error "Called continue in expression"))
+                                                    (lambda (s) (error "Called return in expression"))
+                                                    (lambda (s) (error "Called throw in expression"))))))
 
 ; and expression handler
 (define m-bool-and
@@ -606,4 +610,5 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-(interpret "test-cases/given-tests/hard-tests/test25.txt")
+
+;(interpret "test-cases/given-tests/part2-test/test15.txt")
