@@ -2,6 +2,8 @@
 ;(require "simpleParser.rkt")
 (require "functionParser.rkt")
 
+
+
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
@@ -9,7 +11,6 @@
 (define EMPTY_STATE            '(() ()))
 
 (define NULL 'null)
-(define RETURN 'return)
 (define TRUE 'true)
 (provide TRUE)
 (define FALSE 'false)
