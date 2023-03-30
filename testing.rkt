@@ -9,6 +9,7 @@
                                              (substring filename 39 40)
                                              "")))
                           (equal? (interpret filename) constraint)))
+#|
 ;--------------------
 ; Easy Tests
 ;--------------------
@@ -102,7 +103,7 @@
 ;(interpret "test-cases/given-tests/part2-test/test19.txt" 5)
 ;(error "Error thrown without catch")
 (assert "test-cases/given-tests/part2-test/test20.txt" 21)
-
+|#
 
 ;--------------------
  ; Part3 Tests

@@ -1,5 +1,6 @@
 #lang racket
-(require "simpleParser.rkt")
+;(require "simpleParser.rkt")
+(require "functionParser.rkt")
 
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
