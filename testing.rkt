@@ -90,7 +90,7 @@
 ;(error "Undeclared Variable")
 ;(interpret "test-cases/given-tests/part2-test/test12.txt")
 ;(error "Undeclared Variable")
-;(interpret "test-cases/given-tests/part2-test/test12.txt")
+;(interpret "test-cases/given-tests/part2-test/test13.txt")
 ;(error "Break outside of loop")
 
 (assert "test-cases/given-tests/part2-test/test14.txt" 12)
@@ -103,3 +103,34 @@
 ;(error "Error thrown without catch")
 (assert "test-cases/given-tests/part2-test/test20.txt" 21)
 
+
+;--------------------
+ ; Part3 Tests
+ ;--------------------
+(assert "test-cases/given-tests/part3-test/test01.txt" 10)
+(assert "test-cases/given-tests/part3-test/test02.txt" 14)
+(assert "test-cases/given-tests/part3-test/test03.txt" 45)
+(assert "test-cases/given-tests/part3-test/test04.txt" 55)
+(assert "test-cases/given-tests/part3-test/test05.txt" 1)
+(assert "test-cases/given-tests/part3-test/test06.txt" 115)
+(assert "test-cases/given-tests/part3-test/test07.txt" TRUE)
+(assert "test-cases/given-tests/part3-test/test08.txt" 20)
+(assert "test-cases/given-tests/part3-test/test09.txt" 24)
+(assert "test-cases/given-tests/part3-test/test10.txt" 2)
+(assert "test-cases/given-tests/part3-test/test11.txt" 35)
+; Error test 12
+(interpret "test-cases/given-tests/part3-test/test12.txt")
+;(error "TODO")
+(assert "test-cases/given-tests/part3-test/test13.txt" 90)
+(assert "test-cases/given-tests/part3-test/test14.txt" 69)
+(assert "test-cases/given-tests/part3-test/test15.txt" 87)
+(assert "test-cases/given-tests/part3-test/test16.txt" 64)
+; Error test 17
+(interpret "test-cases/given-tests/part3-test/test17.txt")
+;(error "TODO")
+(assert "test-cases/given-tests/part3-test/test18.txt" 125)
+(assert "test-cases/given-tests/part3-test/test19.txt" 100)
+(assert "test-cases/given-tests/part3-test/test20.txt" 2000400)
+(assert "test-cases/given-tests/part3-test/test21.txt" 3421)
+(assert "test-cases/given-tests/part3-test/test22.txt" 20332)
+(assert "test-cases/given-tests/part3-test/test23.txt" 21)
