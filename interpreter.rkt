@@ -34,8 +34,8 @@
 (define interpret-return-output
   (lambda (return)
     (cond
-      ((eq? return #t) 'true)
-      ((eq? return #f) 'false)
+      ((eq? return #t) TRUE)
+      ((eq? return #f) FALSE)
       (else            return))))
 
 ; === State helper functions ===
