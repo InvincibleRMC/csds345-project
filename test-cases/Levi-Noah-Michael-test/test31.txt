@@ -1,1 +1,3 @@
-return false == 0;
+function main() {
+    return false == 0;
+}
