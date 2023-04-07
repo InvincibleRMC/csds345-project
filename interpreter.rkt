@@ -198,6 +198,7 @@
       ((eq? (get-statement-type statement) 'continue)(m-state-continue          statement state next break continue return throw))
       ((eq? (get-statement-type statement) 'break)   (m-state-break             statement state next break continue return throw))
       ((eq? (get-statement-type statement) 'throw)   (m-state-throw             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'function (m-state-function          statement state next break continue return throw))
       
       (else                                         (error "Unknown Control Keyword")))))
 
@@ -398,6 +399,41 @@
 (define get-assign-value
   (lambda (statement state)
     (m-value (get-second-operand statement) state)))
+
+; function defenition
+(define m-state-function
+  (lambda (statement state next break continue return throw)
+    (add-binding (get-function-name statement)
+                 (list (get-function-variables statement) (get-function-body statement)
+                       (lambda (s) 
+                 state)
+
+(define get-function-name
+  (lambda (statement)
+    (cadr statement)))
+
+(define get-function-variables
+  (lambda (statement)
+    (caddr statement)))
+
+(define get-function-body
+  (lambda (statement)
+    (cadddr statement)))
+
+(define truncate-state-to-match-cps
+  (lambda (main-state truncate-state return)
+    (if (null? main-state)
+        (return truncate-state)
+        (truncate-state-to-match-cps
+         (make-state (cdr (get-state-names main-state))     (cdr (get-state-values main-state)))
+         (make-state (cdr (get-state-names truncate-state)) (cdr (get-state-values truncate-state)))
+         (lamda (s) (return (make-state
+                     (cons (car (get-state-names main-state)) (get-state-names s))
+                     (cons (car (get-state-values main-state)) (get-state-values s)))))))))
+
+(define truncate-state-to-match
+  (lambda (s1 s2)
+    
 
 ; === Values expression evaluator
 (define m-value
