@@ -7,7 +7,7 @@
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
-(define KEYWORD_CONTROL        '(var = return if while begin try catch finally break continue throw))
+(define KEYWORD_CONTROL        '(var = return if while begin try catch finally break continue throw function funcall))
 (define EMPTY_STATE            '(() ()))
 
 (define NULL 'null)
@@ -16,17 +16,21 @@
 (define FALSE 'false)
 (provide FALSE)
 
+(define MAIN_CALL '((funcall main ())))
+
 ; === Main ===
 ; Interpreter entry point. Reads a file as a program and interprets it, returning the return value of the program
 (provide interpret)
 (define interpret
   (lambda (filename)
-    (m-state-body (parser filename) EMPTY_STATE
-                  (lambda (s) (error "No return statement"))
-                  break-error
-                  continue-error
-                  (lambda (s v) (interpret-return-output v))
-                  (lambda (s v) (error "Error thrown without catch")))))
+    (m-value MAIN_CALL
+             (m-state-body (parser filename)
+                           EMPTY_STATE
+                           (lambda (s) (error "No return statement"))
+                           break-error
+                           continue-error
+                           (lambda (s v) (interpret-return-output v))
+                           (lambda (s v) (error "Error thrown without catch"))))))
 
 (define break-error
   (lambda (s) (error "Break outside of loop")))
@@ -409,9 +413,9 @@
 ; function defenition handler
 (define m-state-function
   (lambda (statement state next break continue return throw)
-    (add-binding (get-function-name statement)
+    (next (add-binding (get-function-name statement)
                  (make-closure (get-function-variables statement) (get-function-body statement) state)
-                 state)))
+                 state))))
 
 (define make-closure
   (lambda (formal-parameters body state)
@@ -432,7 +436,7 @@
             
 (define truncate-state-to-match-cps
   (lambda (main-state truncate-state return)
-    (if (null? main-state)
+    (if (or (null? main-state) (null? truncate-state))
         (return main-state)
         (truncate-state-to-match-cps
           (next-state main-state)
@@ -440,8 +444,8 @@
           (lambda (s) (return (append (get-current-state truncate-state) s)))))))
 
 (define truncate-state-to-match
-  (lambda (s1 s2)
-    (truncate-state-to-match-cps s1 s2 identity)))
+  (lambda (main-state truncate-state)
+    (truncate-state-to-match-cps main-state truncate-state identity)))
     
 
 
@@ -453,13 +457,13 @@
      (bind-parameters
       (get-closure-params (get-binding-value (get-funcall-name statement) state))
       (get-funcall-args statement)
-      (add-scope ((get-closure-environment (get-binding-value state (get-funcall-name statement))) state))
+      (add-scope ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
       state)
-     next
+     (lambda (s) (next (recover-state s state)))
      break-error
      continue-error
-     (lambda (s v) (next s))
-     throw)))
+     (lambda (s v) (next (recover-state s state)))
+     (lambda (s v) (throw (recover-state s state))))))
 
 (define get-funcall-name
   (lambda (statement)
@@ -471,15 +475,15 @@
 
 (define get-closure-params
   (lambda (closure)
-    (cadr closure)))
+    (car closure)))
 
 (define get-closure-body
   (lambda (closure)
-    (caddr closure)))
+    (cadr closure)))
 
 (define get-closure-environment
   (lambda (closure)
-    (cadddr (closure))))
+    (caddr closure)))
     
 (define bind-parameters
   (lambda (params args new-state old-state)
@@ -487,10 +491,12 @@
         new-state
         (bind-parameters (cdr params) (cdr args) (add-binding (car params) (m-value (car args) old-state) new-state) old-state))))
 
+
 (define recover-state
-  (lambda (old-state new-state)
-    (remove-scope
-                                      
+  (lambda (inner-state outer-state)
+    (truncate-state-to-match outer-state (remove-scope inner-state))))
+
+
 ; === Values expression evaluator
 (define m-value
   (lambda (expression state)
@@ -690,3 +696,5 @@
 (define m-bool-or
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
+
+(interpret "test-cases/given-tests/easy-tests/test1.txt")
