@@ -16,7 +16,7 @@
 (define FALSE 'false)
 (provide FALSE)
 
-(define MAIN_CALL '((funcall main ())))
+(define MAIN_CALL '(funcall main ()))
 
 ; === Main ===
 ; Interpreter entry point. Reads a file as a program and interprets it, returning the return value of the program
@@ -25,7 +25,7 @@
   (lambda (filename)
     (m-state-body (parser filename)
                   EMPTY_STATE
-                  (lambda (s) (interpret-return-output (m-value MAIN_CALL s)))
+                  (lambda (s) (interpret-return-output (m-value-function MAIN_CALL s)))
                   break-error
                   continue-error
                   (lambda (s v) (error "Returned outside of a function"))
@@ -494,9 +494,11 @@
 (define recover-state
   (lambda (inner-state outer-state)
     (truncate-state-to-match outer-state (remove-scope inner-state))))
-
-
-; === Values expression evaluator
+;=====================================================
+;=====================================================
+;=====================================================
+;=====================================================
+; === Values expression evaluator ===
 (define m-value
   (lambda (expression state)
     (cond
@@ -507,9 +509,7 @@
 ; Check to see if we need to evaluate a function or not
 (define is-function-expression?
   (lambda (expression state)
-    (eq? (get-operator expression) 'funcall)))
-
-(define m-value-func
+    (and (list? expression) (eq? (get-operator expression) 'funcall))))
 
 ; Get the operator from a expression represented by a list
 (define get-operator
@@ -549,14 +549,18 @@
 ; === Function expression evaluator ===
 (define m-value-function
   (lambda (expression state)
-    (m-state-funcall
-     expression
-     state
-     (lambda (s) (error "Tried to use the result of a void function in an operation"))
+    (m-state-body
+     (get-closure-body (get-binding-value (get-funcall-name expression) state))
+     (bind-parameters
+      (get-closure-params (get-binding-value (get-funcall-name expression) state))
+      (get-funcall-args expression)
+      (add-scope ((get-closure-environment (get-binding-value (get-funcall-name expression) state)) state))
+      state)
+     (lambda (s) (error "You can't use the return value from a void function."))
      break-error
      continue-error
      (lambda (s v) v)
-     (lambda (s v) (error "How did we get here")))))
+     (lambda (s v) (error "How did we get here.")))))
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -583,8 +587,8 @@
 
 (define (m-number-helper func expression state)
   (func
-   (m-number (get-first-operand expression) state)
-   (m-number (get-second-operand expression) (m-state (get-first-operand expression) state
+   (m-value (get-first-operand expression) state)
+   (m-value (get-second-operand expression) (m-state (get-first-operand expression) state
                                                       identity
                                                       (lambda (s) (error "Called break in expression"))
                                                       (lambda (s) (error "Called continue in expression"))
@@ -602,7 +606,7 @@
         ; Subtraction
         (m-number-helper - expression state)
         ; Unary
-        (- 0 (m-number (get-first-operand expression) state)))))
+        (- 0 (m-value (get-first-operand expression) state)))))
 
 ; multiplication expresion evaluator
 (define m-number-multiplication
@@ -693,13 +697,13 @@
 ; not expression handler
 (define m-bool-not
   (lambda (expression state)
-    (not (m-bool (get-first-operand expression) state))))
+    (not (m-value (get-first-operand expression) state))))
 
 
 (define (m-bool-helper func expression state)
   (func
-   (m-bool (get-first-operand expression) state)
-   (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state
+   (m-value (get-first-operand expression) state)
+   (m-value (get-second-operand expression) (m-state (get-first-operand expression) state
                                                     identity
                                                     (lambda (s) (error "Called break in expression"))
                                                     (lambda (s) (error "Called continue in expression"))
@@ -715,5 +719,5 @@
 (define m-bool-or
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
-
+(parser "test-cases/given-tests/easy-tests/test1.txt")
 (interpret "test-cases/given-tests/easy-tests/test1.txt")
