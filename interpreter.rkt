@@ -23,14 +23,13 @@
 (provide interpret)
 (define interpret
   (lambda (filename)
-    (m-value MAIN_CALL
-             (m-state-body (parser filename)
-                           EMPTY_STATE
-                           (lambda (s) (error "No return statement"))
-                           break-error
-                           continue-error
-                           (lambda (s v) (interpret-return-output v))
-                           (lambda (s v) (error "Error thrown without catch"))))))
+    (m-state-body (parser filename)
+                  EMPTY_STATE
+                  (lambda (s) (interpret-return-output (m-value MAIN_CALL s)))
+                  break-error
+                  continue-error
+                  (lambda (s v) (error "Returned outside of a function"))
+                  (lambda (s v) (error "Error thrown without catch")))))
 
 (define break-error
   (lambda (s) (error "Break outside of loop")))
@@ -509,6 +508,8 @@
 (define is-function-expression?
   (lambda (expression state)
     (eq? (get-operator expression) 'funcall)))
+
+(define m-value-func
 
 ; Get the operator from a expression represented by a list
 (define get-operator
