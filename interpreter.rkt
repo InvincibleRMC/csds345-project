@@ -23,10 +23,16 @@
   (lambda (filename)
     (m-state-body (parser filename) EMPTY_STATE
                   (lambda (s) (error "No return statement"))
-                  (lambda (s) (error "Break outside of loop"))
-                  (lambda (s) (error "Continue outside of loop"))
+                  break-error
+                  continue-error
                   (lambda (s v) (interpret-return-output v))
                   (lambda (s v) (error "Error thrown without catch")))))
+
+(define break-error
+  (lambda (s) (error "Break outside of loop")))
+
+(define continue-error
+  (lambda (s) (error "Continue outside of loop")))
 
 (define identity
   (lambda (v) v))
@@ -188,18 +194,18 @@
 (define m-state-control
   (lambda (statement state next break continue return throw)
     (cond
-      ((eq? (get-statement-type statement) 'var)     (m-state-var               statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'return)  (m-state-return            statement state next break continue return throw))
-      ((eq? (get-statement-type statement) '=)       (m-state-assign            statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'if)      (m-state-if                statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'while)   (m-state-while             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'begin)   (m-state-begin             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'try)     (m-state-try-catch-finally statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'continue)(m-state-continue          statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'break)   (m-state-break             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'throw)   (m-state-throw             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'function (m-state-function          statement state next break continue return throw))
-      
+      ((eq? (get-statement-type statement) 'var)      (m-state-var               statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'return)   (m-state-return            statement state next break continue return throw))
+      ((eq? (get-statement-type statement) '=)        (m-state-assign            statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'if)       (m-state-if                statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'while)    (m-state-while             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'begin)    (m-state-begin             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'try)      (m-state-try-catch-finally statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'continue) (m-state-continue          statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'break)    (m-state-break             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'throw)    (m-state-throw             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'function) (m-state-function          statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'funcall)  (m-state-funcall           statement state next break continue return throw))
       (else                                         (error "Unknown Control Keyword")))))
 
 ; m-state-body-begin
@@ -400,13 +406,17 @@
   (lambda (statement state)
     (m-value (get-second-operand statement) state)))
 
-; function defenition
+; function defenition handler
 (define m-state-function
   (lambda (statement state next break continue return throw)
     (add-binding (get-function-name statement)
-                 (list (get-function-variables statement) (get-function-body statement)
-                       (lambda (s) 
-                 state)
+                 (make-closure (get-function-variables statement) (get-function-body statement) state)
+                 state)))
+
+(define make-closure
+  (lambda (formal-parameters body state)
+    (list formal-parameters body
+          (lambda (s) (truncate-state-to-match state s)))))
 
 (define get-function-name
   (lambda (statement)
@@ -419,22 +429,68 @@
 (define get-function-body
   (lambda (statement)
     (cadddr statement)))
-
+            
 (define truncate-state-to-match-cps
   (lambda (main-state truncate-state return)
     (if (null? main-state)
-        (return truncate-state)
+        (return main-state)
         (truncate-state-to-match-cps
-         (make-state (cdr (get-state-names main-state))     (cdr (get-state-values main-state)))
-         (make-state (cdr (get-state-names truncate-state)) (cdr (get-state-values truncate-state)))
-         (lamda (s) (return (make-state
-                     (cons (car (get-state-names main-state)) (get-state-names s))
-                     (cons (car (get-state-values main-state)) (get-state-values s)))))))))
+          (next-state main-state)
+          (next-state truncate-state)
+          (lambda (s) (return (append (get-current-state truncate-state) s)))))))
 
 (define truncate-state-to-match
   (lambda (s1 s2)
+    (truncate-state-to-match-cps s1 s2 identity)))
     
 
+
+; funciton call handler
+(define m-state-funcall
+  (lambda (statement state next break continue return throw)
+    (m-state-body
+     (get-closure-body (get-binding-value (get-funcall-name statement) state))
+     (bind-parameters
+      (get-closure-params (get-binding-value (get-funcall-name statement) state))
+      (get-funcall-args statement)
+      (add-scope ((get-closure-environment (get-binding-value state (get-funcall-name statement))) state))
+      state)
+     next
+     break-error
+     continue-error
+     (lambda (s v) (next s))
+     throw)))
+
+(define get-funcall-name
+  (lambda (statement)
+    (cadr statement)))
+
+(define get-funcall-args
+  (lambda (statement)
+    (cddr statement)))
+
+(define get-closure-params
+  (lambda (closure)
+    (cadr closure)))
+
+(define get-closure-body
+  (lambda (closure)
+    (caddr closure)))
+
+(define get-closure-environment
+  (lambda (closure)
+    (cadddr (closure))))
+    
+(define bind-parameters
+  (lambda (params args new-state old-state)
+    (if (null? params)
+        new-state
+        (bind-parameters (cdr params) (cdr args) (add-binding (car params) (m-value (car args) old-state) new-state) old-state))))
+
+(define recover-state
+  (lambda (old-state new-state)
+    (remove-scope
+                                      
 ; === Values expression evaluator
 (define m-value
   (lambda (expression state)
