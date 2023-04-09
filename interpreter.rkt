@@ -414,8 +414,8 @@
 (define m-state-function
   (lambda (statement state next break continue return throw)
     (next (add-binding (get-function-name statement)
-                 (make-closure (get-function-variables statement) (get-function-body statement) state)
-                 state))))
+                       (make-closure (get-function-variables statement) (get-function-body statement) state)
+                       state))))
 
 (define make-closure
   (lambda (formal-parameters body state)
@@ -439,9 +439,9 @@
     (if (or (null? main-state) (null? truncate-state))
         (return main-state)
         (truncate-state-to-match-cps
-          (next-state main-state)
-          (next-state truncate-state)
-          (lambda (s) (return (append (get-current-state truncate-state) s)))))))
+         (next-state main-state)
+         (next-state truncate-state)
+         (lambda (s) (return (append (get-current-state truncate-state) s)))))))
 
 (define truncate-state-to-match
   (lambda (main-state truncate-state)
@@ -500,9 +500,15 @@
 ; === Values expression evaluator
 (define m-value
   (lambda (expression state)
-    (if (is-bool-expression? expression state)
-        (m-bool   expression state)
-        (m-number expression state))))
+    (cond
+      ((is-function-expression? expression state) (m-value-function expression state))
+      ((is-bool-expression? expression state)     (m-bool expression state))
+      (else                                       (m-number expression state)))))
+
+; Check to see if we need to evaluate a function or not
+(define is-function-expression?
+  (lambda (expression state)
+    (eq? (get-operator expression) 'funcall)))
 
 ; Get the operator from a expression represented by a list
 (define get-operator
@@ -538,6 +544,18 @@
       ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) #t)
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    #t)
       (else                                                         #f))))
+
+; === Function expression evaluator ===
+(define m-value-function
+  (lambda (expression state)
+    (m-state-funcall
+     expression
+     state
+     (lambda (s) (error "Tried to use the result of a void function in an operation"))
+     break-error
+     continue-error
+     (lambda (s v) v)
+     (lambda (s v) (error "How did we get here")))))
 
 ; === Numerical expression evaluator ===
 (define m-number
