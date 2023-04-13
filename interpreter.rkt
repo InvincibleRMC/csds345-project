@@ -8,7 +8,8 @@
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
 (define KEYWORD_CONTROL        '(var = return if while begin try catch finally break continue throw function funcall))
-(define EMPTY_STATE            '(() ()))
+(define EMPTY_STATE            '((() ())))
+(define EMPTY_ENVIRONMENT      '(() ()))
 
 (define NULL 'null)
 (define TRUE 'true)
@@ -48,34 +49,39 @@
       (else            return))))
 
 ; === State helper functions ===
+(define (get-current-environment state)
+  (car state))
 
-(define (get-current-state state)
-  (cons (car state) (cons (cadr state) '())))
+(define (update-current-environment state new-environment)
+  (cons new-environment (cdr state)))
 
-(define (next-state state)
-  (cddr state))
+(define (get-current-scope environment)
+  (cons (car environment) (cons (cadr environment) '())))
+
+(define (next-scopes environment)
+  (cddr environment))
 
 (define (add-scope state)
-  (add-scope-cps state (lambda (v) v)))
+  (update-current-environment state (add-scope-cps (get-current-environment state) identity)))
 
-(define (add-scope-cps state continuation)
-  (if (null? (next-state state))
-      (continuation (append state EMPTY_STATE))
-      (add-scope-cps (next-state state) (lambda (v) (continuation (append (get-current-state state) v))))))
+(define (add-scope-cps environment continuation)
+  (if (null? (next-scopes environment))
+      (continuation (append environment EMPTY_ENVIRONMENT))
+      (add-scope-cps (next-scopes environment) (lambda (v) (continuation (append (get-current-scope environment) v))))))
 
-(define (next-next-state state)
-  (cddddr state))
+(define (next-next-scopes environment)
+  (cddddr environment))
 
 (define (remove-scope state)
-  (remove-scope-cps state (lambda (v) v)))
+  (update-current-environment state (remove-scope-cps (get-current-environment state) identity)))
 
 (define (remove-scope-cps state continuation)
-  (if (null? (next-state state))
+  (if (null? (next-scopes state))
       (error "trying to leave scope without entering one")
   
-      (if (null? (next-next-state state))
-          (continuation (get-current-state state))
-          (remove-scope-cps (next-state state) (lambda (v) (continuation (append (get-current-state state) v)))))))
+      (if (null? (next-next-scopes state))
+          (continuation (get-current-scope state))
+          (remove-scope-cps (next-scopes state) (lambda (v) (continuation (append (get-current-scope state) v)))))))
 
 (define contains?
   (lambda (element list)
@@ -84,43 +90,64 @@
       ((eq? (car list) element) #t)
       (else                     (contains? element (cdr list))))))
 
-(define (get-state-names state)
-  (get-state-names-cps state (lambda (v) v)))
+(define (get-environment-names environment)
+  (get-environment-names-cps environment identity))
 
-(define (get-state-names-cps state continuation)
+(define (get-environment-names-cps environment continuation)
+  (if (null? environment)
+      (continuation '())
+      (get-environment-names-cps (next-scopes environment) (lambda (v) (continuation (append (car environment) v))))))
+
+(define (get-environment-values environment)
+  (get-environment-values-cps environment identity))
+
+(define (get-environment-values-cps state continuation)
   (if (null? state)
       (continuation '())
-      (get-state-names-cps (next-state state) (lambda (v) (continuation (append (car state) v))))))
+      (get-environment-values-cps (next-scopes state) (lambda (v) (continuation (append (cadr state) v))))))
 
-(define (get-state-values state)
-  (get-state-values-cps state (lambda (v) v)))
-
-(define (get-state-values-cps state continuation)
-  (if (null? state)
-      (continuation '())
-      (get-state-values-cps (next-state state) (lambda (v) (continuation (append (cadr state) v))))))
-
-(define make-state
+(define make-environment
   (lambda (names values)
     (list names values)))
 
-(define (is-last-state? state)
-  (and (list? (car state)) (list? (cadr state)) (null? (cddr state))))
+(define (is-last-scope? environement)
+  (and (list? (car environement)) (list? (cadr environement)) (null? (cddr environement))))
 
 ; Check whether a name is bound
 (define check-for-binding
   (lambda (name state)
-    (contains? name (get-state-names state))))
+    (check-for-binding-cps name state identity)))
 
+(define check-for-binding-cps
+  (lambda (name state return)
+    (cond
+      ((null? state)                                       (return #f))
+      ((check-for-binding-in-environment name (car state)) (return #t))
+      (else                                                (check-for-binding-cps name (cdr state) return))))) 
+
+(define check-for-binding-in-environment
+  (lambda (name environment)
+    (contains? name (get-environment-names environment))))
+ 
 ; Find the value for a bound name
 (define get-binding-value
   (lambda (name state)
+    (get-binding-value-cps name state identity)))
+
+(define get-binding-value-cps
+  (lambda (name state return)
     (cond
-      ((null? state)                            (error "Name not bound"))
-      ((and (eq? (car (get-state-names state)) name) (eq? (car (get-state-values state)) NULL))
+      ((check-for-binding-in-environment name (get-current-environment state)) (return (get-binding-value-environment name (get-current-environment state))))
+      (else (get-binding-value-cps name (cdr state) return)))))
+
+(define get-binding-value-environment
+  (lambda (name environment)
+    (cond
+      ((null? environment)                                  (error "Name not bound"))
+      ((and (eq? (car (get-environment-names environment)) name) (eq? (car (get-environment-values environment)) NULL))
        (error "Tried to evaluate expression with an uninitialized variable"))
-      ((eq? (car (get-state-names state)) name) (car (get-state-values state)))
-      (else                                     (get-binding-value name (make-state (cdr (get-state-names state)) (cdr (get-state-values state))))))))
+      ((eq? (car (get-environment-names environment)) name) (car (get-environment-values environment)))
+      (else                                                 (get-binding-value-environment name (make-environment (cdr (get-environment-names environment)) (cdr (get-environment-values environment))))))))
 
 ; helper
 (define (state-length state)
@@ -139,25 +166,25 @@
 (define add-binding-cps
   (lambda (name value state return)
     (cond
-      ((and (not (is-last-state? state))
-            (not (contains? name (get-state-names (get-current-state state))))) (add-binding-cps name value (next-state state)
-                                                                                                 (lambda (v) (return (append (get-current-state state) v)))))
-      (else (add-one-state-binding-cps name value (get-current-state state)
-                                       (lambda (v) (return (append v (next-state state)))))))))
+      ((and (not (is-last-scope? state))
+            (not (contains? name (get-environment-names (get-current-scope state))))) (add-binding-cps name value (next-scopes state)
+                                                                                                 (lambda (v) (return (append (get-current-scope state) v)))))
+      (else (add-one-state-binding-cps name value (get-current-scope state)
+                                       (lambda (v) (return (append v (next-scopes state)))))))))
       
 (define (add-one-state-binding-cps name value state return)
   (cond
     ((and (= 0 (state-length state))
-          (is-last-state? state))         (return (make-state (list name) (list value))))
-    ((eq? (car (get-state-names (get-current-state state))) name) (return (append (make-state (get-state-names (get-current-state state))
-                                                                                              (cons value (cdr (get-state-values (get-current-state state))))) (next-state state))))
+          (is-last-scope? state))         (return (make-environment (list name) (list value))))
+    ((eq? (car (get-environment-names (get-current-scope state))) name) (return (append (make-environment (get-environment-names (get-current-scope state))
+                                                                                              (cons value (cdr (get-environment-values (get-current-scope state))))) (next-scopes state))))
     
       
-    (else (add-one-state-binding-cps name value (append (make-state (cdr (get-state-names (get-current-state state)))
-                                                                    (cdr (get-state-values (get-current-state state)))) (next-state state))
-                                     (lambda (v) (return (make-state
-                                                          (cons (car (get-state-names  (get-current-state state))) (get-state-names  (get-current-state v)))
-                                                          (cons (car (get-state-values (get-current-state state))) (get-state-values (get-current-state v))))))))))
+    (else (add-one-state-binding-cps name value (append (make-environment (cdr (get-environment-names (get-current-scope state)))
+                                                                    (cdr (get-environment-values (get-current-scope state)))) (next-scopes state))
+                                     (lambda (v) (return (make-environment
+                                                          (cons (car (get-environment-names  (get-current-scope state))) (get-environment-names  (get-current-scope v)))
+                                                          (cons (car (get-environment-values (get-current-scope state))) (get-environment-values (get-current-scope v))))))))))
 
 ; Get the keyword the defines the statement type from a statement represented by a list
 (define get-statement-type
@@ -286,7 +313,7 @@
                                                (lambda (s2 v2) (m-state-finally (get-finally-block-statement-list statement) s2 (lambda (s3) (return s3 v2)) break continue return throw))
                                                (lambda (s2 v2) (m-state-finally (get-finally-block-statement-list statement) s2 (lambda (s3) (throw s3 v2)) break continue return throw)))))))
      
-;;try block handler
+;; try block handler
 (define m-state-try
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state next break continue return throw)))
@@ -438,9 +465,9 @@
     (if (or (null? main-state) (null? truncate-state))
         (return main-state)
         (truncate-state-to-match-cps
-         (next-state main-state)
-         (next-state truncate-state)
-         (lambda (s) (return (append (get-current-state truncate-state) s)))))))
+         (next-scopes main-state)
+         (next-scopes truncate-state)
+         (lambda (s) (return (append (get-current-scope truncate-state) s)))))))
 
 (define truncate-state-to-match
   (lambda (main-state truncate-state)
@@ -719,5 +746,6 @@
 (define m-bool-or
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
-(parser "test-cases/given-tests/easy-tests/test1.txt")
-(interpret "test-cases/given-tests/easy-tests/test1.txt")
+
+; (parser "test-cases/given-tests/easy-tests/test1.txt")
+; (interpret "test-cases/given-tests/easy-tests/test1.txt")
