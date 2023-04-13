@@ -68,6 +68,7 @@
 (assert "test-cases/Levi-Noah-Michael-test/test31.txt" TRUE)
 (assert "test-cases/Levi-Noah-Michael-test/test32.txt" TRUE)
 (assert "test-cases/Levi-Noah-Michael-test/test33.txt" FALSE)
+(assert "test-cases/Levi-Noah-Michael-test/test34.txt" 4)
 
 
 ;--------------------
