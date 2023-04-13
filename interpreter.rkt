@@ -1,5 +1,4 @@
 #lang racket
-;(require "simpleParser.rkt")
 (require "functionParser.rkt")
 
 
@@ -60,6 +59,9 @@
 
 (define (next-scopes environment)
   (cddr environment))
+
+(define (add-environment state)
+  (update-current-environment state EMPTY_ENVIRONMENT))
 
 (define (add-scope state)
   (update-current-environment state (add-scope-cps (get-current-environment state) identity)))
@@ -122,7 +124,7 @@
   (lambda (name state return)
     (cond
       ((null? state)                                       (return #f))
-      ((check-for-binding-in-environment name (car state)) (return #t))
+      ((check-for-binding-in-environment name (get-current-environment state)) (return #t))
       (else                                                (check-for-binding-cps name (cdr state) return))))) 
 
 (define check-for-binding-in-environment
@@ -151,7 +153,7 @@
 
 ; helper
 (define (state-length state)
-  (state-length-cps (car state) (lambda (v) v)))
+  (state-length-cps (car state) identity))
 
 (define (state-length-cps list return)
   (if (null? list)
@@ -161,27 +163,27 @@
 ; Add a name-value pair binding to the state, or replce the value if name is already bound
 (define add-binding
   (lambda (name value state)
-    (add-binding-cps name value state (lambda (v) v))))
+    (update-current-environment state (add-binding-cps name value (get-current-environment state) identity))))
 
 (define add-binding-cps
-  (lambda (name value state return)
+  (lambda (name value environment return)
     (cond
-      ((and (not (is-last-scope? state))
-            (not (contains? name (get-environment-names (get-current-scope state))))) (add-binding-cps name value (next-scopes state)
-                                                                                                 (lambda (v) (return (append (get-current-scope state) v)))))
-      (else (add-one-state-binding-cps name value (get-current-scope state)
-                                       (lambda (v) (return (append v (next-scopes state)))))))))
+      ((and (not (is-last-scope? environment))
+            (not (contains? name (get-environment-names (get-current-scope environment))))) (add-binding-cps name value (next-scopes environment)
+                                                                                                             (lambda (v) (return (append (get-current-scope environment) v)))))
+      (else (add-one-state-binding-cps name value (get-current-scope environment)
+                                       (lambda (v) (return (append v (next-scopes environment)))))))))
       
 (define (add-one-state-binding-cps name value state return)
   (cond
     ((and (= 0 (state-length state))
           (is-last-scope? state))         (return (make-environment (list name) (list value))))
     ((eq? (car (get-environment-names (get-current-scope state))) name) (return (append (make-environment (get-environment-names (get-current-scope state))
-                                                                                              (cons value (cdr (get-environment-values (get-current-scope state))))) (next-scopes state))))
+                                                                                                          (cons value (cdr (get-environment-values (get-current-scope state))))) (next-scopes state))))
     
       
     (else (add-one-state-binding-cps name value (append (make-environment (cdr (get-environment-names (get-current-scope state)))
-                                                                    (cdr (get-environment-values (get-current-scope state)))) (next-scopes state))
+                                                                          (cdr (get-environment-values (get-current-scope state)))) (next-scopes state))
                                      (lambda (v) (return (make-environment
                                                           (cons (car (get-environment-names  (get-current-scope state))) (get-environment-names  (get-current-scope v)))
                                                           (cons (car (get-environment-values (get-current-scope state))) (get-environment-values (get-current-scope v))))))))))
@@ -459,15 +461,18 @@
 (define get-function-body
   (lambda (statement)
     (cadddr statement)))
+
+(define (next-environment state)
+  (cdr state))
             
 (define truncate-state-to-match-cps
   (lambda (main-state truncate-state return)
     (if (or (null? main-state) (null? truncate-state))
         (return main-state)
         (truncate-state-to-match-cps
-         (next-scopes main-state)
-         (next-scopes truncate-state)
-         (lambda (s) (return (append (get-current-scope truncate-state) s)))))))
+         (next-environment main-state)
+         (next-environment truncate-state)
+         (lambda (s) (return (append (get-current-environment truncate-state) s)))))))
 
 (define truncate-state-to-match
   (lambda (main-state truncate-state)
@@ -483,7 +488,7 @@
      (bind-parameters
       (get-closure-params (get-binding-value (get-funcall-name statement) state))
       (get-funcall-args statement)
-      (add-scope ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
+      (add-environment ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
       state)
      (lambda (s) (next (recover-state s state)))
      break-error
@@ -576,12 +581,29 @@
 ; === Function expression evaluator ===
 (define m-value-function
   (lambda (expression state)
+    
+    #|
+    (display state)
+    (display (add-environment ((get-closure-environment (get-binding-value (get-funcall-name expression) state)) state)))
+    (display (bind-parameters
+              (get-closure-params (get-binding-value (get-funcall-name expression) state))
+              (get-funcall-args expression)
+              (add-environment ((get-closure-environment (get-binding-value (get-funcall-name expression) state)) state))
+              state))
+    |#
+    ;(display (get-funcall-name expression))
+    ;(display (get-binding-value (get-funcall-name expression) state))
+    ;(display (get-binding-value (get-funcall-name expression) state))
+    ;(display (get-closure-environment (get-binding-value (get-funcall-name expression) state)))
+    ;(display "\n")
+    ;(display ((get-closure-environment (get-binding-value (get-funcall-name expression) state)) state))
+             
     (m-state-body
      (get-closure-body (get-binding-value (get-funcall-name expression) state))
      (bind-parameters
       (get-closure-params (get-binding-value (get-funcall-name expression) state))
       (get-funcall-args expression)
-      (add-scope ((get-closure-environment (get-binding-value (get-funcall-name expression) state)) state))
+      (add-environment ((get-closure-environment (get-binding-value (get-funcall-name expression) state)) state))
       state)
      (lambda (s) (error "You can't use the return value from a void function."))
      break-error
@@ -616,11 +638,11 @@
   (func
    (m-value (get-first-operand expression) state)
    (m-value (get-second-operand expression) (m-state (get-first-operand expression) state
-                                                      identity
-                                                      (lambda (s) (error "Called break in expression"))
-                                                      (lambda (s) (error "Called continue in expression"))
-                                                      (lambda (s) (error "Called return in expression"))
-                                                      (lambda (s) (error "Called throw in expression"))))))
+                                                     identity
+                                                     (lambda (s) (error "Called break in expression"))
+                                                     (lambda (s) (error "Called continue in expression"))
+                                                     (lambda (s) (error "Called return in expression"))
+                                                     (lambda (s) (error "Called throw in expression"))))))
    
 ; addition expression evaluator
 (define m-number-addition
@@ -731,11 +753,11 @@
   (func
    (m-value (get-first-operand expression) state)
    (m-value (get-second-operand expression) (m-state (get-first-operand expression) state
-                                                    identity
-                                                    (lambda (s) (error "Called break in expression"))
-                                                    (lambda (s) (error "Called continue in expression"))
-                                                    (lambda (s) (error "Called return in expression"))
-                                                    (lambda (s) (error "Called throw in expression"))))))
+                                                     identity
+                                                     (lambda (s) (error "Called break in expression"))
+                                                     (lambda (s) (error "Called continue in expression"))
+                                                     (lambda (s) (error "Called return in expression"))
+                                                     (lambda (s) (error "Called throw in expression"))))))
 
 ; and expression handler
 (define m-bool-and
@@ -747,5 +769,5 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-; (parser "test-cases/given-tests/easy-tests/test1.txt")
-; (interpret "test-cases/given-tests/easy-tests/test1.txt")
+(interpret "test-cases/given-tests/easy-tests/test2.txt")
+;(interpret "test-cases/given-tests/part3-test/test02.txt")
