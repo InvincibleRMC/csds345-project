@@ -65,9 +65,7 @@
 (assert "test-cases/Levi-Noah-Michael-test/test29.txt" 214216)
 ; Bool to int casting tests
 (assert "test-cases/Levi-Noah-Michael-test/test30.txt" FALSE)
-(interpret "test-cases/Levi-Noah-Michael-test/test31.txt")
 (assert "test-cases/Levi-Noah-Michael-test/test31.txt" TRUE)
-(interpret "test-cases/Levi-Noah-Michael-test/test32.txt")
 (assert "test-cases/Levi-Noah-Michael-test/test32.txt" TRUE)
 (assert "test-cases/Levi-Noah-Michael-test/test33.txt" FALSE)
 

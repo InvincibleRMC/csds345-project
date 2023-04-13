@@ -61,7 +61,7 @@
   (cddr environment))
 
 (define (add-environment state)
-  (update-current-environment state EMPTY_ENVIRONMENT))
+  (cons EMPTY_ENVIRONMENT state))
 
 (define (add-scope state)
   (update-current-environment state (add-scope-cps (get-current-environment state) identity)))
@@ -472,7 +472,7 @@
         (truncate-state-to-match-cps
          (next-environment main-state)
          (next-environment truncate-state)
-         (lambda (s) (return (append (get-current-environment truncate-state) s)))))))
+         (lambda (s) (return (cons (get-current-environment truncate-state) s)))))))
 
 (define truncate-state-to-match
   (lambda (main-state truncate-state)
@@ -636,8 +636,8 @@
 
 (define (m-number-helper func expression state)
   (func
-   (m-value (get-first-operand expression) state)
-   (m-value (get-second-operand expression) (m-state (get-first-operand expression) state
+   (m-number (get-first-operand expression) state)
+   (m-number (get-second-operand expression) (m-state (get-first-operand expression) state
                                                      identity
                                                      (lambda (s) (error "Called break in expression"))
                                                      (lambda (s) (error "Called continue in expression"))
@@ -751,8 +751,8 @@
 
 (define (m-bool-helper func expression state)
   (func
-   (m-value (get-first-operand expression) state)
-   (m-value (get-second-operand expression) (m-state (get-first-operand expression) state
+   (m-bool (get-first-operand expression) state)
+   (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state
                                                      identity
                                                      (lambda (s) (error "Called break in expression"))
                                                      (lambda (s) (error "Called continue in expression"))
@@ -769,5 +769,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-(interpret "test-cases/given-tests/easy-tests/test2.txt")
-;(interpret "test-cases/given-tests/part3-test/test02.txt")
+(interpret "test-cases/given-tests/part3-test/test03.txt")
