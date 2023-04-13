@@ -719,5 +719,3 @@
 (define m-bool-or
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
-(parser "test-cases/given-tests/easy-tests/test1.txt")
-(interpret "test-cases/given-tests/easy-tests/test1.txt")
