@@ -519,16 +519,19 @@
   (lambda (statement state next break continue return throw)
     (m-state-body
      (get-closure-body (get-binding-value (get-funcall-name statement) state))
-     (bind-parameters
-      (get-closure-params (get-binding-value (get-funcall-name statement) state))
-      (get-funcall-args statement)
-      (add-environment ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
-      state)
+     (bind-parameters-generate-state statement state)
      (lambda (s) (next (recover-state s state)))
      break-error
      continue-error
      (lambda (s v) (next (recover-state s state)))
      (lambda (s v) (throw (recover-state s state) v)))))
+
+(define (bind-parameters-generate-state statement state)
+  (bind-parameters
+      (get-closure-params (get-binding-value (get-funcall-name statement) state))
+      (get-funcall-args statement)
+      (add-environment ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
+      state))
 
 (define get-funcall-name
   (lambda (statement)
@@ -628,11 +631,7 @@
   (lambda (expression state)
     (m-state-body
      (get-closure-body (get-binding-value (get-funcall-name expression) state))
-     (bind-parameters
-      (get-closure-params (get-binding-value (get-funcall-name expression) state))
-      (get-funcall-args expression)
-      (add-environment ((get-closure-environment (get-binding-value (get-funcall-name expression) state)) state))
-      state)
+     (bind-parameters-generate-state expression state)
      (lambda (s) (error "You can't use the return value from a void function."))
      break-error
      continue-error
