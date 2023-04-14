@@ -708,6 +708,8 @@
 (define m-bool
   (lambda (expression state)
     (cond
+      ((equal? expression #t)                                       #t)
+      ((equal? expression #f)                                       #f)
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
       ((check-for-binding expression state)                         (get-binding-value      expression state))
@@ -796,4 +798,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-(interpret "test-cases/given-tests/part3-test/test04.txt")
+(interpret "test-cases/given-tests/part3-test/test08.txt")
