@@ -555,9 +555,13 @@
         (bind-parameters (cdr params) (cdr args) (create-new-binding (car params) (m-value (car args) old-state) new-state) old-state))))
 
 
+; replace the last environments of outer states with the environments of inner states
 (define recover-state
   (lambda (inner-state outer-state)
-    (truncate-state-to-match outer-state inner-state)))
+
+
+
+
 
 ;=====================================================
 ;=====================================================
@@ -613,7 +617,7 @@
 
 ; === Function expression evaluator ===
 (define m-value-function
-  (lambda (expression state)      
+  (lambda (expression state)
     (m-state-body
      (get-closure-body (get-binding-value (get-funcall-name expression) state))
      (bind-parameters
@@ -787,4 +791,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-;(interpret "test-cases/given-tests/part3-test/test04.txt")
+(interpret "test-cases/given-tests/part3-test/test04.txt")
