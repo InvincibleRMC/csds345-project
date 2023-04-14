@@ -474,8 +474,8 @@
 (define m-state-function
   (lambda (statement state next break continue return throw)
     (next (create-new-binding (get-function-name statement)
-                       (make-closure (get-function-variables statement) (get-function-body statement) state)
-                       state))))
+                              (make-closure (get-function-variables statement) (get-function-body statement) state)
+                              state))))
 
 (define make-closure
   (lambda (formal-parameters body state)
@@ -528,10 +528,10 @@
 
 (define (bind-parameters-generate-state statement state)
   (bind-parameters
-      (get-closure-params (get-binding-value (get-funcall-name statement) state))
-      (get-funcall-args statement)
-      (add-environment ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
-      state))
+   (get-closure-params (get-binding-value (get-funcall-name statement) state))
+   (get-funcall-args statement)
+   (add-environment ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
+   state))
 
 (define get-funcall-name
   (lambda (statement)
@@ -666,11 +666,11 @@
   (func
    (m-number (get-first-operand expression) state)
    (m-number (get-second-operand expression) (m-state (get-first-operand expression) state
-                                                     identity
-                                                     (lambda (s) (error "Called break in expression"))
-                                                     (lambda (s) (error "Called continue in expression"))
-                                                     (lambda (s) (error "Called return in expression"))
-                                                     (lambda (s) (error "Called throw in expression"))))))
+                                                      identity
+                                                      (lambda (s) (error "Called break in expression"))
+                                                      (lambda (s) (error "Called continue in expression"))
+                                                      (lambda (s) (error "Called return in expression"))
+                                                      (lambda (s) (error "Called throw in expression"))))))
    
 ; addition expression evaluator
 (define m-number-addition
@@ -784,11 +784,11 @@
   (func
    (m-bool (get-first-operand expression) state)
    (m-bool (get-second-operand expression) (m-state (get-first-operand expression) state
-                                                     identity
-                                                     (lambda (s) (error "Called break in expression"))
-                                                     (lambda (s) (error "Called continue in expression"))
-                                                     (lambda (s) (error "Called return in expression"))
-                                                     (lambda (s) (error "Called throw in expression"))))))
+                                                    identity
+                                                    (lambda (s) (error "Called break in expression"))
+                                                    (lambda (s) (error "Called continue in expression"))
+                                                    (lambda (s) (error "Called return in expression"))
+                                                    (lambda (s) (error "Called throw in expression"))))))
 
 ; and expression handler
 (define m-bool-and
