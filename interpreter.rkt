@@ -555,12 +555,17 @@
         (bind-parameters (cdr params) (cdr args) (create-new-binding (car params) (m-value (car args) old-state) new-state) old-state))))
 
 
-; replace the last environments of outer states with the environments of inner states
+; replace the last environments of outer states with the environments of inner state
 (define recover-state
   (lambda (inner-state outer-state)
+    (recover-state-cps (get-next-environments inner-state) outer-state (- (get-environment-count outer-state) (get-environment-count inner-state)) identity)))
 
-
-
+(define recover-state-cps
+  (lambda (inner-state outer-state skip-count return)
+    (cond
+      ((null? inner-state) (return '()))
+      ((> skip-count 0)    (recover-state-cps inner-state (cdr outer-state) (- skip-count 1) (lambda (s) (return (cons (car outer-state) s)))))
+      (else                (return outer-state)))))
 
 
 ;=====================================================
