@@ -16,7 +16,7 @@
 (define FALSE 'false)
 (provide FALSE)
 
-(define MAIN_CALL '(funcall main ()))
+(define MAIN_CALL '(funcall main))
 
 ; === Main ===
 ; Interpreter entry point. Reads a file as a program and interprets it, returning the return value of the program
@@ -528,7 +528,7 @@
      break-error
      continue-error
      (lambda (s v) (next (recover-state s state)))
-     (lambda (s v) (throw (recover-state s state))))))
+     (lambda (s v) (throw (recover-state s state) v)))))
 
 (define get-funcall-name
   (lambda (statement)
@@ -552,22 +552,23 @@
     
 (define bind-parameters
   (lambda (params args new-state old-state)
-    (if (null? params)
-        new-state
-        (bind-parameters (cdr params) (cdr args) (create-new-binding (car params) (m-value (car args) old-state) new-state) old-state))))
+    (cond
+      ((xor (null? params) (null? args)) (error "Number of paramaters and arguments in mismatched"))
+      ((null? params)                   new-state)
+      (else                             (bind-parameters (cdr params) (cdr args) (create-new-binding (car params) (m-value (car args) old-state) new-state) old-state)))))
 
 
 ; replace the last environments of outer states with the environments of inner state
 (define recover-state
   (lambda (inner-state outer-state)
-    (recover-state-cps (get-next-environments inner-state) outer-state (- (get-environment-count outer-state) (get-environment-count inner-state)) identity)))
+    (recover-state-cps (get-next-environments inner-state) outer-state (- (get-environment-count outer-state) (get-environment-count (get-next-environments inner-state))) identity)))
 
 (define recover-state-cps
   (lambda (inner-state outer-state skip-count return)
     (cond
       ((null? inner-state) (return '()))
       ((> skip-count 0)    (recover-state-cps inner-state (cdr outer-state) (- skip-count 1) (lambda (s) (return (cons (car outer-state) s)))))
-      (else                (return outer-state)))))
+      (else                (return inner-state)))))
 
 
 ;=====================================================
@@ -799,5 +800,3 @@
 (define m-bool-or
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
-
-(interpret "test-cases/given-tests/part3-test/test08.txt")
