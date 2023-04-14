@@ -25,7 +25,9 @@
   (lambda (filename)
     (m-state-body (parser filename)
                   EMPTY_STATE
-                  (lambda (s) (interpret-return-output (m-value-function MAIN_CALL s)))
+                  (lambda (s) (if (check-for-binding 'main s)
+                                  (interpret-return-output (m-value-function MAIN_CALL s))
+                                  (error "No main function")))
                   break-error
                   continue-error
                   (lambda (s v) (error "Returned outside of a function"))
