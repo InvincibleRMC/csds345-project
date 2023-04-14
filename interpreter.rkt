@@ -157,14 +157,6 @@
       (else                                                 (get-binding-value-environment name (make-environment (cdr (get-environment-names environment)) (cdr (get-environment-values environment))))))))
 
 ; helper
-(define (state-length state)
-  (state-length-cps (car state) identity))
-
-(define (state-length-cps list return)
-  (if (null? list)
-      (return 0)
-      (state-length-cps (cdr list) (lambda (v) (return (+ 1 v))))))
-
 (define (get-environment-count state)
   (get-environement-count-cps state identity))
 
