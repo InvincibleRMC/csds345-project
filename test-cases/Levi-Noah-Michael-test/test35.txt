@@ -2,7 +2,7 @@ var x = 3;
 
 function foo (&a, &b) {
     a = 2 * a;
-    b = 3 * b;
+    b = x * b;
     var x = a + b - a * b;
     return 2 * x;
 }
