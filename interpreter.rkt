@@ -1,5 +1,5 @@
 #lang racket
-(require "functionParser.rkt")
+(require "classParser.rkt")
 
 
 
