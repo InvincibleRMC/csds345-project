@@ -6,7 +6,7 @@
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
-(define KEYWORD_CONTROL        '(var = return if while begin try catch finally break continue throw function funcall))
+(define KEYWORD_CONTROL        '(var = return if while begin try catch finally break continue throw function static-function funcall class))
 (define EMPTY_STATE            '((() ())))
 (define EMPTY_ENVIRONMENT      '(() ()))
 
@@ -16,7 +16,7 @@
 (define FALSE 'false)
 (provide FALSE)
 
-(define MAIN_CALL '(funcall main))
+(define MAIN 'main)
 
 ; === Main ===
 ; Interpreter entry point. Reads a file as a program and interprets it, returning the return value of the program
@@ -25,13 +25,35 @@
   (lambda (filename)
     (m-state-body (parser filename)
                   EMPTY_STATE
-                  (lambda (s) (if (check-for-binding 'main s)
-                                  (interpret-return-output (m-value-function MAIN_CALL s))
-                                  (error "No main function")))
+                  (lambda (s) (run-main-method (find-main-cps (get-current-scope (get-current-environment s)) identity) s))
                   break-error
                   continue-error
                   (lambda (s v) (error "Returned outside of a function"))
                   (lambda (s v) (error "Error thrown without catch")))))
+
+(define run-main-method
+  (lambda (main-closure state)
+    (m-state-body
+     (get-closure-body main-closure)
+     state
+     (lambda (s) (error "No return statement in main function"))
+     break-error
+     continue-error
+     (lambda (s v) (interpret-return-output v))
+     (lambda (s v) (error "Uncaught exception")))))
+    
+(define find-main-cps
+  (lambda (scope return)
+    (if (null? (get-scope-names scope))
+        (error "No main function")
+        (find-main-helper-cps (get-class-methods (car (get-scope-values scope))) identity (lambda () (find-main-cps (get-next-scope-elements scope) return)))))) 
+
+(define find-main-helper-cps
+  (lambda (method-list return next)
+    (cond
+      ((null? method-list) (next))
+      ((eq? (car (get-scope-names method-list)) MAIN) (return (car (get-scope-values method-list))))
+      (else                                           (find-main-helper-cps (get-next-scope-elements method-list) return next)))))
 
 (define break-error
   (lambda (s) (error "Break outside of loop")))
@@ -119,6 +141,22 @@
 
 (define (is-last-scope? environement)
   (and (list? (car environement)) (list? (cadr environement)) (null? (cddr environement))))
+
+(define get-scope-names
+  (lambda (scope)
+    (car scope)))
+
+(define get-scope-values
+  (lambda (scope)
+    (cadr scope)))
+
+(define make-scope
+  (lambda (names values)
+    (list names values)))
+
+(define get-next-scope-elements
+  (lambda (scope)
+    (make-scope (cdr (get-scope-names scope)) (cdr (get-scope-values scope)))))
 
 ; Check whether a name is bound
 (define check-for-binding
@@ -217,6 +255,61 @@
   (lambda (statement)
     (car statement)))
 
+; replace the last environments of outer states with the environments of inner state
+(define recover-state
+  (lambda (inner-state outer-state)
+    (recover-state-cps (get-next-environments inner-state) outer-state (- (get-environment-count outer-state) (get-environment-count (get-next-environments inner-state))) identity)))
+
+(define recover-state-cps
+  (lambda (inner-state outer-state skip-count return)
+    (cond
+      ((null? inner-state) (return '()))
+      ((> skip-count 0)    (recover-state-cps inner-state (cdr outer-state) (- skip-count 1) (lambda (s) (return (cons (car outer-state) s)))))
+      (else                (return inner-state)))))
+
+; === Class helper functions ===
+(define make-class-closure
+  (lambda (name extends body)
+    (list
+     (if (null? extends) '() (cadr extends))
+     (get-current-scope (get-current-environment
+                         (m-state-body
+                          body
+                          EMPTY_STATE
+                          identity
+                          break-error
+                          continue-error
+                          (lambda (s v) (error "return statement outside of method"))
+                          (lambda (s v) (error "throw statement outside of method"))))))))
+
+(define get-class-super-type
+  (lambda (closure)
+    (car closure)))
+
+(define get-class-methods
+  (lambda (closure)
+    (cadr closure)))
+
+(define get-class-fields
+  (lambda (closure)
+    (caddr closure)))
+
+(define get-class-instance-vars
+  (lambda (closure)
+    (cadddr closure)))
+
+(define make-instance-closure
+  (lambda (type instance-var-names instance-var-values)
+    (list type (list instance-var-names instance-var-values))))
+
+(define get-instance-type
+  (lambda (closure)
+    (car closure)))
+
+(define get-instance-vars
+  (lambda (closure)
+    (cadr closure)))
+
 ; === State handler ===
 ; Modify the state by a statement
 (define m-state
@@ -250,19 +343,21 @@
 (define m-state-control
   (lambda (statement state next break continue return throw)
     (cond
-      ((eq? (get-statement-type statement) 'var)      (m-state-var               statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'return)   (m-state-return            statement state next break continue return throw))
-      ((eq? (get-statement-type statement) '=)        (m-state-assign            statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'if)       (m-state-if                statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'while)    (m-state-while             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'begin)    (m-state-begin             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'try)      (m-state-try-catch-finally statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'continue) (m-state-continue          statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'break)    (m-state-break             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'throw)    (m-state-throw             statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'function) (m-state-function          statement state next break continue return throw))
-      ((eq? (get-statement-type statement) 'funcall)  (m-state-funcall           statement state next break continue return throw))
-      (else                                         (error "Unknown Control Keyword")))))
+      ((eq? (get-statement-type statement) 'var)             (m-state-var               statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'return)          (m-state-return            statement state next break continue return throw))
+      ((eq? (get-statement-type statement) '=)               (m-state-assign            statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'if)              (m-state-if                statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'while)           (m-state-while             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'begin)           (m-state-begin             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'try)             (m-state-try-catch-finally statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'continue)        (m-state-continue          statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'break)           (m-state-break             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'throw)           (m-state-throw             statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'function)        (m-state-function          statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'static-function) (m-state-function          statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'funcall)         (m-state-funcall           statement state next break continue return throw))
+      ((eq? (get-statement-type statement) 'class)           (m-state-class             statement state next break continue return throw))
+      (else                                                  (error "Unknown Control Keyword")))))
 
 ; m-state-body-begin
 (define (m-state-body-begin statementlist state next break continue return throw)
@@ -339,17 +434,17 @@
                                                (lambda (s2 v2) (m-state-finally (get-finally-block-statement-list statement) s2 (lambda (s3) (return s3 v2)) break continue return throw))
                                                (lambda (s2 v2) (m-state-finally (get-finally-block-statement-list statement) s2 (lambda (s3) (throw s3 v2)) break continue return throw)))))))
      
-;; try block handler
+; try block handler
 (define m-state-try
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state next break continue return throw)))
 
-;; catch block handler
+; catch block handler
 (define m-state-catch
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state next break continue return throw)))
 
-;; finally block handler
+; finally block handler
 (define m-state-finally
   (lambda (statementlist state next break continue return throw)
     (m-state-body-begin statementlist state next break continue return throw)))
@@ -502,10 +597,6 @@
          length
          (lambda (s l) (if (eq? l 0) (return s 0) (return (cons (get-current-environment truncate-state) s) (- l 1))))))))
 
-
-    
-
-
 ; funciton call handler
 (define m-state-funcall
   (lambda (statement state next break continue return throw)
@@ -552,24 +643,23 @@
       ((null? params)                   new-state)
       (else                             (bind-parameters (cdr params) (cdr args) (create-new-binding (car params) (m-value (car args) old-state) new-state) old-state)))))
 
+; class defenition handler
+(define m-state-class
+  (lambda (statement state next break continue return throw)
+    (next (create-new-binding (get-class-name statement) (make-class-closure (get-class-name statement) (get-class-extends statement) (get-class-body statement)) state))))
 
-; replace the last environments of outer states with the environments of inner state
-(define recover-state
-  (lambda (inner-state outer-state)
-    (recover-state-cps (get-next-environments inner-state) outer-state (- (get-environment-count outer-state) (get-environment-count (get-next-environments inner-state))) identity)))
+(define get-class-name
+  (lambda (statement)
+    (cadr statement)))
 
-(define recover-state-cps
-  (lambda (inner-state outer-state skip-count return)
-    (cond
-      ((null? inner-state) (return '()))
-      ((> skip-count 0)    (recover-state-cps inner-state (cdr outer-state) (- skip-count 1) (lambda (s) (return (cons (car outer-state) s)))))
-      (else                (return inner-state)))))
+(define get-class-extends
+  (lambda (statement)
+    (caddr statement)))
 
-
-;=====================================================
-;=====================================================
-;=====================================================
-;=====================================================
+(define get-class-body
+  (lambda (statement)
+    (cadddr statement)))
+    
 ; === Values expression evaluator ===
 (define m-value
   (lambda (expression state)
@@ -791,3 +881,5 @@
 (define m-bool-or
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
+
+(interpret "test-cases/given-tests/easy-tests/test1.txt")
