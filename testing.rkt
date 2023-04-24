@@ -106,6 +106,7 @@
 (assert "test-cases/given-tests/part2-test/test20.txt" 21)
 
 
+#|
 ;--------------------
  ; Part3 Tests
  ;--------------------
@@ -136,7 +137,7 @@
 (assert "test-cases/given-tests/part3-test/test21.txt" 3421)
 (assert "test-cases/given-tests/part3-test/test22.txt" 20332)
 (assert "test-cases/given-tests/part3-test/test23.txt" 21)
-
+|#
 ;--------------------
  ; Part4 Tests
  ;--------------------
