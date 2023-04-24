@@ -136,3 +136,20 @@
 (assert "test-cases/given-tests/part3-test/test21.txt" 3421)
 (assert "test-cases/given-tests/part3-test/test22.txt" 20332)
 (assert "test-cases/given-tests/part3-test/test23.txt" 21)
+
+;--------------------
+ ; Part4 Tests
+ ;--------------------
+(assert "test-cases/given-tests/part4-test/test01.txt" 15)
+(assert "test-cases/given-tests/part4-test/test02.txt" 12)
+(assert "test-cases/given-tests/part4-test/test03.txt" 125)
+(assert "test-cases/given-tests/part4-test/test04.txt" 36)
+(assert "test-cases/given-tests/part4-test/test05.txt" 54)
+(assert "test-cases/given-tests/part4-test/test06.txt" 110)
+(assert "test-cases/given-tests/part4-test/test07.txt" 26)
+(assert "test-cases/given-tests/part4-test/test08.txt" 117)
+(assert "test-cases/given-tests/part4-test/test09.txt" 32)
+(assert "test-cases/given-tests/part4-test/test10.txt" 15)
+(assert "test-cases/given-tests/part4-test/test11.txt" 123456)
+(assert "test-cases/given-tests/part4-test/test12.txt" 5285)
+(assert "test-cases/given-tests/part4-test/test13.txt" -716)
