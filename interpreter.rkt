@@ -594,7 +594,7 @@
 (define m-state-funcall
   (lambda (statement state next break continue return throw)
     (m-state-body
-     (get-closure-body (get-binding-value (get-funcall-name statement) state))
+     (get-closure-body (get-funcall-closure statement state))
      (bind-parameters-generate-state statement state)
      (lambda (s) (next (recover-state s state)))
      break-error
@@ -604,14 +604,14 @@
 
 (define (bind-parameters-generate-state statement state)
   (bind-parameters
-   (get-closure-params (get-binding-value (get-funcall-name statement) state))
+   (get-closure-params (get-funcall-closure statement state))
    (get-funcall-args statement)
-   (add-environment ((get-closure-environment (get-binding-value (get-funcall-name statement) state)) state))
+   (add-environment ((get-closure-environment (get-funcall-closure statement state)) state))
    state))
 
-(define get-funcall-name
-  (lambda (statement)
-    (cadr statement)))
+(define get-funcall-closure
+  (lambda (statement state)
+    (m-value (cadr statement) state)))
 
 (define get-funcall-args
   (lambda (statement)
@@ -723,7 +723,7 @@
 (define m-value-function
   (lambda (expression state)
     (m-state-body
-     (get-closure-body (get-binding-value (get-funcall-name expression) state))
+     (get-closure-body (get-funcall-closure expression state))
      (bind-parameters-generate-state expression state)
      (lambda (s) (error "You can't use the return value from a void function."))
      break-error
