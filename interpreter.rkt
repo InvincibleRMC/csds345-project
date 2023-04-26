@@ -122,9 +122,12 @@
   (get-environment-names-cps environment identity))
 
 (define (get-environment-names-cps environment continuation)
+  
   (if (null? environment)
       (continuation '())
-      (get-environment-names-cps (next-scopes environment) (lambda (v) (continuation (append (car environment) v))))))
+      (get-environment-names-cps (next-scopes environment) (lambda (v)
+                                                             ;(display "\n\n\n") (display environment)
+                                                             (continuation (append (car environment) v))))))
 
 (define (get-environment-values environment)
   (get-environment-values-cps environment identity))
@@ -538,9 +541,21 @@
 ; assign statement handler
 (define m-state-assign
   (lambda (statement state next break continue return throw)
-    (if (check-for-binding (get-assign-name statement) state)
-        (m-state (get-second-operand statement) state (lambda (s) (next (update-binding (get-assign-name statement) (get-assign-value statement state) s))) break continue return throw)
-        (error "Undeclared Variable"))))
+    (if (list? (get-assign-name statement)) (m-state-assign-this statement state next break continue return throw)
+        (if (check-for-binding (get-assign-name statement) state)
+            (m-state (get-second-operand statement) state (lambda (s) (next (update-binding (get-assign-name statement) (get-assign-value statement state) s))) break continue return throw)
+            (error "Undeclared Variable")))))
+
+(define m-state-assign-this
+  (lambda (statement state next break continue return throw)
+    (cond
+      ((not (eq? (get-operator (get-assign-name statement)) 'dot))       (error "Tried to assign to an expression"))
+      ((not (eq? (get-first-operand (get-assign-name statement)) 'this)) (error "Tried to write to private instance variable"))
+      (else                                                              (m-state (get-second-operand statement) state (lambda (s) (next (update-binding-cps-scope (get-second-operand (get-assign-name statement))
+                                                                                                                                                                   (get-assign-value statement state)
+                                                                                                                                                                   (get-instance-scope (get-binding-value (get-binding-value 'this state) state))
+                                                                                                                                                                   identity)))
+                                                                                  break continue return throw)))))
 
 (define get-assign-name
   (lambda (statement)
@@ -606,12 +621,16 @@
   (bind-parameters
    (get-closure-params (get-funcall-closure statement state))
    (get-funcall-args statement)
-   (add-environment ((get-closure-environment (get-funcall-closure statement state)) state))
+   (create-new-binding 'this (get-funcall-type statement) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state)))
    state))
 
 (define get-funcall-closure
   (lambda (statement state)
     (m-value (cadr statement) state)))
+
+(define get-funcall-type
+  (lambda (statement)
+    (cadadr statement)))
 
 (define get-funcall-args
   (lambda (statement)
@@ -745,7 +764,11 @@
 ; === Dot expression evalutator ===
 (define m-value-dot
   (lambda (expression state)
-    (get-binding-value-environment (get-second-operand expression) (get-instance-scope (get-binding-value (get-first-operand expression) state)))))
+    (get-binding-value (get-second-operand expression) (list (get-instance-scope (get-binding-value
+                                                                                  (if (eq? (get-first-operand expression) 'this)
+                                                                                      (get-binding-value (get-first-operand expression) state)
+                                                                                      (get-first-operand expression))
+                                                                                  state))))))
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -795,7 +818,7 @@
         ; Unary
         (- 0 (m-value (get-first-operand expression) state)))))
 
-; multiplication expresion evaluator
+; multiplication expresion evaluatotar
 (define m-number-multiplication
   (lambda (expression state)
     (m-number-helper * expression state)))
@@ -911,4 +934,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-(interpret "test-cases/given-tests/part4-test/test02.txt")
+;(interpret "test-cases/given-tests/part4-test/test04.txt")
