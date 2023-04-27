@@ -555,17 +555,18 @@
     (cond
       ((not (eq? (get-operator (get-assign-name statement)) 'dot))       (error "Tried to assign to an expression"))
       ((not (eq? (get-first-operand (get-assign-name statement)) 'this)) (error "Tried to write to private instance variable"))
-      (else                                                              (m-state (get-second-operand statement) state
-                                                                                  (lambda (s) (next (update-binding
-                                                                                                     (get-binding-value 'this state)
-                                                                                                     (update-instance-scope
-                                                                                                      (get-binding-value (get-binding-value 'this state) state)
-                                                                                                      (update-binding-cps-scope (get-second-operand (get-assign-name statement))
-                                                                                                                                (get-assign-value statement state)
-                                                                                                                                (get-instance-scope (get-binding-value (get-binding-value 'this state) state))
-                                                                                                                                identity))
-                                                                                                     state)))
-                                                                                  break continue return throw)))))
+      (else
+       (m-state (get-second-operand statement) state
+                (lambda (s) (next (update-binding
+                                   (get-binding-value 'this state)
+                                   (update-instance-scope
+                                    (get-binding-value (get-binding-value 'this state) state)
+                                    (update-binding-cps-scope (get-second-operand (get-assign-name statement))
+                                                              (get-assign-value statement state)
+                                                              (get-instance-scope (get-binding-value (get-binding-value 'this state) state))
+                                                              identity))
+                                   state)))
+                break continue return throw)))))
 
 (define get-assign-name
   (lambda (statement)
@@ -944,4 +945,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-;(interpret "test-cases/given-tests/part4-test/test05.txt")
+(interpret "test-cases/given-tests/part4-test/test05.txt")
