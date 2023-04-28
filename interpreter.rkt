@@ -270,7 +270,9 @@
 
 (define recover-this
   (lambda (instance-name inner-state merged-state)
-    (update-binding instance-name (get-binding-value 'this inner-state) merged-state)))
+    (if (null? instance-name)
+        merged-state
+        (update-binding instance-name (get-binding-value 'this inner-state) merged-state))))
 
 ; === Class helper functions ===
 (define make-class-closure
@@ -631,26 +633,44 @@
     (m-state-body
      (get-closure-body (get-funcall-closure statement state))
      (bind-parameters-generate-state statement state)
-     (lambda (s) (next (recover-state s state (get-funcall-type statement))))
+     (lambda (s) (next (recover-state s state (get-funcall-this-name statement))))
      break-error
      continue-error
-     (lambda (s v) (next (recover-state s state (get-funcall-type statement))))
-     (lambda (s v) (throw (recover-state s state (get-funcall-type statement)) v)))))
+     (lambda (s v) (next (recover-state s state (get-funcall-this-name statement))))
+     (lambda (s v) (throw (recover-state s state (get-funcall-this-name statement)) v)))))
 
 (define (bind-parameters-generate-state statement state)
+  (display "\n\n\n\n")
+  (display (get-binding-value 'super (bind-parameters
+            (get-closure-params (get-funcall-closure statement state))
+            (get-funcall-args statement)
+            (create-new-binding
+             'super
+             (update-instance-environment (get-funcall-instance-closure statement state) (next-scopes (get-instance-environment (get-funcall-instance-closure statement state))))
+             (create-new-binding 'this (get-funcall-instance-closure statement state) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state))))
+            state)))
   (bind-parameters
    (get-closure-params (get-funcall-closure statement state))
    (get-funcall-args statement)
-   (create-new-binding 'this (m-value (get-funcall-type statement) state) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state)))
+   (create-new-binding
+    'super
+    (update-instance-environment (get-funcall-instance-closure statement state) (next-scopes (get-instance-environment (get-funcall-instance-closure statement state))))
+    (create-new-binding 'this (get-funcall-instance-closure statement state) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state))))
    state))
 
 (define get-funcall-closure
   (lambda (statement state)
     (m-value (cadr statement) state)))
 
-(define get-funcall-type
+(define get-funcall-this-name
   (lambda (statement)
-    (cadadr statement)))
+    (if (list? (cadadr statement))
+         '()
+         (cadadr statement))))
+
+(define get-funcall-instance-closure
+  (lambda (statement state)
+    (m-value (cadadr statement) state)))
 
 (define get-funcall-args
   (lambda (statement)
@@ -704,7 +724,7 @@
 (define m-value
   (lambda (expression state)
     (cond
-      ((eq? expression 'super)                    (m-value-super expression state))
+      ;((eq? expression 'super)                    (m-value-super expression state))
       ((is-function-expression? expression state) (m-value-function expression state))
       ((is-object-expression? expression state)   (m-value-object expression state))
       ((is-dot-expression? expression state)      (m-value-dot expression state))
@@ -786,12 +806,18 @@
 ; === Dot expression evalutator ===
 (define m-value-dot
   (lambda (expression state)
+    ;(display "\n\n\n")
+    ;(display state)
+    ;(display "\n")
+    ;(display expression)
     (get-binding-value (get-second-operand expression) (list (get-instance-environment (m-value (get-first-operand expression) state))))))
 
 ; === Super expression evaluator ===
+#|
 (define m-value-super
   (lambda (expression state)
     (update-instance-environment (m-value 'this state) (next-scopes (get-instance-environment (m-value 'this state))))))
+|#
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -800,8 +826,8 @@
       ((is-bool-expression? expression state)                       (if (m-bool expression state) 1 0))  ; Cast bool to number
       ((number? expression)                                         expression)
       ((check-for-binding expression state)                         (get-binding-value expression state))
-      ((eq? expression 'super)                                      (m-number (m-value-super expression state) state))
-      ((single-element? expression)                                 (display state) (error "Undeclared Variable"))
+      ;((eq? expression 'super)                                      (m-number (m-value-super expression state) state))
+      ((single-element? expression)                                 (error "Undeclared Variable"))
       ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state))
       ((eq? (get-operator expression) '=)                           (m-number-assign expression state))
       ((eq? (get-operator expression) 'funcall)                     (m-number (m-value-function expression state) state))
@@ -872,7 +898,7 @@
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
       ((check-for-binding expression state)                         (get-binding-value      expression state))
-      ((eq? expression 'super)                                      (m-bool (m-value-super expression state) state))
+      ;((eq? expression 'super)                                      (m-bool (m-value-super expression state) state))
       ((single-element? expression)                                 (error "Undeclared Variable"))
       ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state))
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state))
