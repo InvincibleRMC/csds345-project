@@ -122,7 +122,6 @@
   (get-environment-names-cps environment identity))
 
 (define (get-environment-names-cps environment continuation)
-  
   (if (null? environment)
       (continuation '())
       (get-environment-names-cps (next-scopes environment) (lambda (v) (continuation (append (car environment) v))))))
@@ -258,13 +257,6 @@
 ; replace the last environments of outer states with the environments of inner state
 (define recover-state
   (lambda (inner-state outer-state instance-name)
-    ;(display (get-binding-value 'a1 inner-state))
-    #|
-    (display (get-binding-value instance-name
-              (recover-state-cps (get-next-environments inner-state)
-                       (recover-this inner-state outer-state instance-name)
-                       (- (get-environment-count outer-state) (get-environment-count (get-next-environments inner-state))) identity)))
-    |#
     (recover-this instance-name inner-state (recover-state-cps (get-next-environments inner-state)
                        outer-state
                        (- (get-environment-count outer-state) (get-environment-count (get-next-environments  inner-state))) identity))))
@@ -278,7 +270,6 @@
 
 (define recover-this
   (lambda (instance-name inner-state merged-state)
-    ;(display (get-binding-value instance-name(update-binding instance-name (get-binding-value 'this inner-state) outer-state)))
     (update-binding instance-name (get-binding-value 'this inner-state) merged-state)))
 
 ; === Class helper functions ===
@@ -305,20 +296,26 @@
     (cadr closure)))
 
 (define make-instance-closure
-  (lambda (type class-closure)
-    (list type (get-class-scope class-closure))))
+  (lambda (type class-closure state)
+    (list type (make-instance-closure-environment class-closure state))))
+
+(define make-instance-closure-environment
+  (lambda (class-closure state)
+    (if (null? (get-class-super-type class-closure))
+        (get-class-scope class-closure)
+        (append (get-class-scope class-closure) (make-instance-closure-environment (get-binding-value (get-class-super-type class-closure) state) state)))))
 
 (define get-instance-type
   (lambda (closure)
     (car closure)))
 
-(define get-instance-scope
+(define get-instance-environment
   (lambda (closure)
     (cadr closure)))
 
-(define update-instance-scope
-  (lambda (closure scope)
-    (list (get-instance-type closure) scope)))
+(define update-instance-environment
+  (lambda (closure environment)
+    (list (get-instance-type closure) environment)))
 
 ; === State handler ===
 ; Modify the state by a statement
@@ -571,11 +568,11 @@
        (m-state (get-second-operand statement) state
                 (lambda (s) (next (update-binding
                                    'this
-                                   (update-instance-scope
+                                   (update-instance-environment
                                     (get-binding-value 'this state)
                                     (update-binding-cps-scope (get-second-operand (get-assign-name statement))
                                                               (get-assign-value statement state)
-                                                              (get-instance-scope (get-binding-value 'this state))
+                                                              (get-instance-environment (get-binding-value 'this state))
                                                               identity))
                                    state)))
                 break continue return throw)))))
@@ -707,6 +704,7 @@
 (define m-value
   (lambda (expression state)
     (cond
+      ((eq? expression 'super)                    (m-value-super expression state))
       ((is-function-expression? expression state) (m-value-function expression state))
       ((is-object-expression? expression state)   (m-value-object expression state))
       ((is-dot-expression? expression state)      (m-value-dot expression state))
@@ -783,12 +781,17 @@
 
 (define m-value-new
   (lambda (expression state)
-   (make-instance-closure (get-first-operand expression) (get-binding-value (get-first-operand expression) state))))
+   (make-instance-closure (get-first-operand expression) (get-binding-value (get-first-operand expression) state) state)))
 
 ; === Dot expression evalutator ===
 (define m-value-dot
   (lambda (expression state)
-    (get-binding-value (get-second-operand expression) (list (get-instance-scope (m-value (get-first-operand expression) state))))))
+    (get-binding-value (get-second-operand expression) (list (get-instance-environment (m-value (get-first-operand expression) state))))))
+
+; === Super expression evaluator ===
+(define m-value-super
+  (lambda (expression state)
+    (update-instance-environment (m-value 'this state) (next-scopes (get-instance-environment (m-value 'this state))))))
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -797,7 +800,8 @@
       ((is-bool-expression? expression state)                       (if (m-bool expression state) 1 0))  ; Cast bool to number
       ((number? expression)                                         expression)
       ((check-for-binding expression state)                         (get-binding-value expression state))
-      ((single-element? expression)                                 (error "Undeclared Variable"))
+      ((eq? expression 'super)                                      (m-number (m-value-super expression state) state))
+      ((single-element? expression)                                 (display state) (error "Undeclared Variable"))
       ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state))
       ((eq? (get-operator expression) '=)                           (m-number-assign expression state))
       ((eq? (get-operator expression) 'funcall)                     (m-number (m-value-function expression state) state))
@@ -868,6 +872,7 @@
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
       ((check-for-binding expression state)                         (get-binding-value      expression state))
+      ((eq? expression 'super)                                      (m-bool (m-value-super expression state) state))
       ((single-element? expression)                                 (error "Undeclared Variable"))
       ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state))
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state))
@@ -954,4 +959,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-(interpret "test-cases/given-tests/part4-test/test06.txt")
+(interpret "test-cases/given-tests/part4-test/test07.txt")
