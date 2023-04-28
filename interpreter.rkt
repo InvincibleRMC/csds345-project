@@ -125,9 +125,7 @@
   
   (if (null? environment)
       (continuation '())
-      (get-environment-names-cps (next-scopes environment) (lambda (v)
-                                                             ;(display "\n\n\n") (display environment)
-                                                             (continuation (append (car environment) v))))))
+      (get-environment-names-cps (next-scopes environment) (lambda (v) (continuation (append (car environment) v))))))
 
 (define (get-environment-values environment)
   (get-environment-values-cps environment identity))
@@ -259,8 +257,17 @@
 
 ; replace the last environments of outer states with the environments of inner state
 (define recover-state
-  (lambda (inner-state outer-state)
-    (recover-state-cps (get-next-environments inner-state) outer-state (- (get-environment-count outer-state) (get-environment-count (get-next-environments inner-state))) identity)))
+  (lambda (inner-state outer-state instance-name)
+    ;(display (get-binding-value 'a1 inner-state))
+    #|
+    (display (get-binding-value instance-name
+              (recover-state-cps (get-next-environments inner-state)
+                       (recover-this inner-state outer-state instance-name)
+                       (- (get-environment-count outer-state) (get-environment-count (get-next-environments inner-state))) identity)))
+    |#
+    (recover-this instance-name inner-state (recover-state-cps (get-next-environments inner-state)
+                       outer-state
+                       (- (get-environment-count outer-state) (get-environment-count (get-next-environments  inner-state))) identity))))
 
 (define recover-state-cps
   (lambda (inner-state outer-state skip-count return)
@@ -268,6 +275,11 @@
       ((null? inner-state) (return '()))
       ((> skip-count 0)    (recover-state-cps inner-state (cdr outer-state) (- skip-count 1) (lambda (s) (return (cons (car outer-state) s)))))
       (else                (return inner-state)))))
+
+(define recover-this
+  (lambda (instance-name inner-state merged-state)
+    ;(display (get-binding-value instance-name(update-binding instance-name (get-binding-value 'this inner-state) outer-state)))
+    (update-binding instance-name (get-binding-value 'this inner-state) merged-state)))
 
 ; === Class helper functions ===
 (define make-class-closure
@@ -558,12 +570,12 @@
       (else
        (m-state (get-second-operand statement) state
                 (lambda (s) (next (update-binding
-                                   (get-binding-value 'this state)
+                                   'this
                                    (update-instance-scope
-                                    (get-binding-value (get-binding-value 'this state) state)
+                                    (get-binding-value 'this state)
                                     (update-binding-cps-scope (get-second-operand (get-assign-name statement))
                                                               (get-assign-value statement state)
-                                                              (get-instance-scope (get-binding-value (get-binding-value 'this state) state))
+                                                              (get-instance-scope (get-binding-value 'this state))
                                                               identity))
                                    state)))
                 break continue return throw)))))
@@ -622,17 +634,17 @@
     (m-state-body
      (get-closure-body (get-funcall-closure statement state))
      (bind-parameters-generate-state statement state)
-     (lambda (s) (next (recover-state s state)))
+     (lambda (s) (next (recover-state s state (get-funcall-type statement))))
      break-error
      continue-error
-     (lambda (s v) (next (recover-state s state)))
-     (lambda (s v) (throw (recover-state s state) v)))))
+     (lambda (s v) (next (recover-state s state (get-funcall-type statement))))
+     (lambda (s v) (throw (recover-state s state (get-funcall-type statement)) v)))))
 
 (define (bind-parameters-generate-state statement state)
   (bind-parameters
    (get-closure-params (get-funcall-closure statement state))
    (get-funcall-args statement)
-   (create-new-binding 'this (get-funcall-type statement) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state)))
+   (create-new-binding 'this (m-value (get-funcall-type statement) state) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state)))
    state))
 
 (define get-funcall-closure
@@ -690,6 +702,7 @@
 (define m-state-dot
    (lambda (statement state next break continue return throw)
      (next state)))
+
 ; === Values expression evaluator ===
 (define m-value
   (lambda (expression state)
@@ -775,11 +788,7 @@
 ; === Dot expression evalutator ===
 (define m-value-dot
   (lambda (expression state)
-    (get-binding-value (get-second-operand expression) (list (get-instance-scope (get-binding-value
-                                                                                  (if (eq? (get-first-operand expression) 'this)
-                                                                                      (get-binding-value (get-first-operand expression) state)
-                                                                                      (get-first-operand expression))
-                                                                                  state))))))
+    (get-binding-value (get-second-operand expression) (list (get-instance-scope (m-value (get-first-operand expression) state))))))
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -945,4 +954,4 @@
   (lambda (expression state)
     (m-bool-helper (lambda (a b) (or a b)) expression state)))
 
-(interpret "test-cases/given-tests/part4-test/test05.txt")
+(interpret "test-cases/given-tests/part4-test/test06.txt")

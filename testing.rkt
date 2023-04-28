@@ -8,7 +8,7 @@
                                          (if (number? (string->number (substring filename 39 40)))
                                              (substring filename 39 40)
                                              "")))
-                          (equal? (interpret filename) constraint)))
+                           (equal? (interpret filename) constraint)))
 
 ;--------------------
 ; Easy Tests
