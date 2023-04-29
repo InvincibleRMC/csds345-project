@@ -640,22 +640,17 @@
      (lambda (s v) (throw (recover-state s state (get-funcall-this-name statement)) v)))))
 
 (define (bind-parameters-generate-state statement state)
-  (display "\n\n\n\n")
-  (display (get-binding-value 'super (bind-parameters
-            (get-closure-params (get-funcall-closure statement state))
-            (get-funcall-args statement)
-            (create-new-binding
-             'super
-             (update-instance-environment (get-funcall-instance-closure statement state) (next-scopes (get-instance-environment (get-funcall-instance-closure statement state))))
-             (create-new-binding 'this (get-funcall-instance-closure statement state) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state))))
-            state)))
   (bind-parameters
    (get-closure-params (get-funcall-closure statement state))
    (get-funcall-args statement)
    (create-new-binding
     'super
     (update-instance-environment (get-funcall-instance-closure statement state) (next-scopes (get-instance-environment (get-funcall-instance-closure statement state))))
-    (create-new-binding 'this (get-funcall-instance-closure statement state) (add-environment ((get-closure-environment (get-funcall-closure statement state)) state))))
+    (create-new-binding 'this
+                        (if (or (eq? (get-funcall-this-name statement) 'this) (eq? (get-funcall-this-name statement) 'super))
+                            (get-binding-value 'this state)
+                            (get-funcall-instance-closure statement state))
+                        (add-environment ((get-closure-environment (get-funcall-closure statement state)) state))))
    state))
 
 (define get-funcall-closure
@@ -739,7 +734,10 @@
 ; Check to see if we need to evaluate an object or not
 (define is-object-expression?
   (lambda (expression state)
-    (and (list? expression) (eq? (get-operator expression) 'new))))
+    (or
+     (eq? expression 'this)
+     (eq? expression 'super)
+     (and (list? expression) (eq? (get-operator expression) 'new)))))
 
 (define is-dot-expression?
   (lambda (expression state)
@@ -796,8 +794,9 @@
 (define m-value-object
   (lambda (expression state)
     (cond
+      ((single-element? expression)         (get-binding-value expression state))
       ((eq? (get-operator expression) 'new) (m-value-new expression state))
-      (else                                 (error "Expression is not an object")))))
+      (else                                 (error "Unable to evaluate object")))))
 
 (define m-value-new
   (lambda (expression state)
@@ -806,18 +805,7 @@
 ; === Dot expression evalutator ===
 (define m-value-dot
   (lambda (expression state)
-    ;(display "\n\n\n")
-    ;(display state)
-    ;(display "\n")
-    ;(display expression)
     (get-binding-value (get-second-operand expression) (list (get-instance-environment (m-value (get-first-operand expression) state))))))
-
-; === Super expression evaluator ===
-#|
-(define m-value-super
-  (lambda (expression state)
-    (update-instance-environment (m-value 'this state) (next-scopes (get-instance-environment (m-value 'this state))))))
-|#
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -826,7 +814,6 @@
       ((is-bool-expression? expression state)                       (if (m-bool expression state) 1 0))  ; Cast bool to number
       ((number? expression)                                         expression)
       ((check-for-binding expression state)                         (get-binding-value expression state))
-      ;((eq? expression 'super)                                      (m-number (m-value-super expression state) state))
       ((single-element? expression)                                 (error "Undeclared Variable"))
       ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state))
       ((eq? (get-operator expression) '=)                           (m-number-assign expression state))
