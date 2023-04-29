@@ -1,8 +1,12 @@
-var sum = 0;
-var i = 0;
-
-while ((i = i + 1) < 1000)
-    if (((i % 7) == 0) || ((i % 3) == 0))
-	    sum = sum + i;
-		
-return sum;
+class A {
+	function main() {
+	    var sum = 0;
+	    var i = 0;
+	
+ 	   while ((i = i + 1) < 1000)
+  	      if (((i % 7) == 0) || ((i % 3) == 0))
+     	       sum = sum + i;
+  	          
+   	 return sum;
+	}
+}

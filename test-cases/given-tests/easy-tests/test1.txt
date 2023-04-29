@@ -1,1 +1,5 @@
-return 150;
+class A {
+    static function main() {
+        return 150;
+    }
+}

@@ -1,0 +1,5 @@
+class A {
+	static function main() {
+    return false * 3 + 4 / true;
+	}
+}

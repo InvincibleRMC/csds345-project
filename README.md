@@ -1,6 +1,6 @@
 # Simple Scheme Interpreter
 
-simpleParser.rkt and lex.rkt from Canvas Parses .txt files into a usable format
+classParser.rkt and lex.rkt from Canvas Parses .txt files into a usable format
 
 interpreter.rkt from Group 19 interprets .txt files and runs their code
 
