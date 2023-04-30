@@ -148,6 +148,7 @@
 (assert "test-cases/given-tests/part4-test/test05.txt" 54)
 (assert "test-cases/given-tests/part4-test/test06.txt" 110)
 (assert "test-cases/given-tests/part4-test/test07.txt" 26)
+(assert "test-cases/given-tests/part4-test/test07.5.txt" 6)
 (assert "test-cases/given-tests/part4-test/test08.txt" 117)
 (assert "test-cases/given-tests/part4-test/test09.txt" 32)
 (assert "test-cases/given-tests/part4-test/test10.txt" 15)

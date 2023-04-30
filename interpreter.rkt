@@ -208,10 +208,10 @@
 (define get-superclass-type
   (lambda (expression state type)
     (car (get-binding-value (car (get-funcall-instance-closure expression state type)) state '()))))
-
+#|
 (define (get-super-type instance-type state type)
   (get-class-super-type (get-binding-value instance-type state type)))
-
+|#
     
 (define (get-instance-name-from-funcall expression)
   (cadadr expression))
@@ -1029,4 +1029,4 @@
   (lambda (expression state type)
     (m-bool-helper (lambda (a b) (or a b)) expression state type)))
 
-;(interpret "test-cases/given-tests/part4-test/test08.txt")
+(interpret "test-cases/given-tests/part4-test/test07.5.txt")
