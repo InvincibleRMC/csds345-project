@@ -198,13 +198,76 @@
   (if (zero? count)
       thing
       (myrepeated func (func thing) (- count 1))))
+#| state of '(funcall (dot (new C) m))
+(
+ (A B C) (
+#| Class: A |#  (() ((x y m m2)   (1   2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))
+#| Class: B |#  (A  ((y z m m2)   (22  3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))))
+#| Class: C |#  (B  ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:656:10>))))
+ )
+)
+|#
 
+
+#| state of '(funcall (dot super m)) ;the first time
+((this super) (
+ #| this -> |# (C ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:656:10>))
+                                (y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))
+                                (x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))
+#| super -> |# (C ((y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))
+                              (x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))))
+((A B C) ((() ((x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))
+          (A ((y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))))
+          (B ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:656:10>))))))
+|#
+
+#|
+((this super) (
+               (C ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:656:10>))
+                                (y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))
+                                (x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))
+               (C ((x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))))
+((A B C) ((() ((x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))
+          (A ((y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))))
+          (B ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:656:10>))))))
+
+
+
+((this super) (
+               (C ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:656:10>))
+                                (y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))
+                                (x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))
+               (C ())
+               ))
+((A B C) ((() ((x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:656:10>))))
+          (A ((y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:656:10>))))
+          (B ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:656:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:656:10>))))))
+|#
+
+
+
+; should return the class name of where the function being called is
+; figure out class of super by matching that with 
 (define (update-type expression state type)
-  (cond
+  #|(display (cons "type: " (list type)))
+  (display "\n")
+  (display (cons "Expr: " expression))
+  (display "\n")
+  (display (cons "Name: " (list (get-instance-name-from-funcall expression))))
+  (display "\n")
+  (display (cons "Stat: " state))
+  ;(display "\n")
+  (display "\n\n\n")|#
+  (cond ;if 'this or 'super is the instance name from funcall, then use the else. otherwise, use type
     ((and (not (eq? 'this (get-instance-name-from-funcall expression))) (not (eq? 'super (get-instance-name-from-funcall expression)))) type)
     ;((check-for-binding-in-environment (get-field-from-funcall expression) (get-class-scope (get-binding-value instance-type state type))) instance-type)
-    (else 'B)))
+    (else (get-superclass-type expression state type))))
      ;update-type expression state (get-super-type instance-type state type) type)))
+
+
+(define get-superclass-type
+  (lambda (expression state type)
+    (car (get-binding-value (car (get-funcall-instance-closure expression state type)) state '()))))
 
 (define (get-super-type instance-type state type)
   (get-class-super-type (get-binding-value instance-type state type)))
@@ -679,7 +742,7 @@
 ; funciton call handler
 (define m-state-funcall
   (lambda (statement state next break continue return throw type)
-    ;(display statement)
+    ;(display "coming from m-state\n\n")
     (m-state-body
      (get-closure-body (get-funcall-closure statement state type))
      (bind-parameters-generate-state statement state type)
@@ -691,9 +754,21 @@
      (update-type statement state type))))
 
 (define (bind-parameters-generate-state statement state type)
+  #|(display "Statement: ")
+  (display statement)
+  (display "\nCurrent class of object: ")
+    (display (car (get-funcall-instance-closure statement state type)))
+    (display "\n")
+    (display "Class closure of that class: ")
+    (display (get-binding-value (car (get-funcall-instance-closure statement state type)) state '()))
+    (display "\nSuperclass of that class: ")
+  (display (car (get-binding-value (car (get-funcall-instance-closure statement state type)) state '())))
+    (display "\n\n\n\n")
+|#
   (bind-parameters
    (get-closure-params (get-funcall-closure statement state type))
    (get-funcall-args statement)
+   
    (create-new-binding
     'super
     (update-instance-environment (get-funcall-instance-closure statement state type) (next-scopes (get-instance-environment (get-funcall-instance-closure statement state type))))
@@ -703,6 +778,24 @@
                             (get-funcall-instance-closure statement state type))
                         (add-environment ((get-closure-environment (get-funcall-closure statement state type)) state))))
    state type))
+#|
+(get-funcall-instance-closure statement state type) ->
+(C ((y w m main) (222 4 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (funcall (dot (new C) m)))) #<procedure:...ect/interpreter.rkt:649:10>))
+    (y z m m2)   (22  3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (+ (+ x y) z)))             #<procedure:...ect/interpreter.rkt:649:10>))
+    (x y m m2)   (1   2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (+ x y)))                   #<procedure:...ect/interpreter.rkt:649:10>))))
+|#
+#|
+(update-instance-environment
+    (get-funcall-instance-closure statement state type)
+    (next-scopes (get-instance-environment (get-funcall-instance-closure statement state type))))) ->
+
+(C ((y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:649:10>))
+    (x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:649:10>))))
+(C ((x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:649:10>))))
+(C ())
+(C ((y z m m2) (22 3 (() ((return (funcall (dot super m)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (+ (+ x y) z))) #<procedure:...ect/interpreter.rkt:649:10>))
+    (x y m m2) (1 2 (() ((return (funcall (dot this m2)))) #<procedure:...ect/interpreter.rkt:649:10>) (() ((return (+ x y))) #<procedure:...ect/interpreter.rkt:649:10>))))
+|#
 
 (define get-funcall-closure
   (lambda (statement state type)
@@ -737,13 +830,15 @@
 (define bind-parameters
   (lambda (params args new-state old-state type)
     (cond
-      ((xor (null? params) (null? args)) (error "Number of paramaters and arguments in mismatched"))
+      ((xor (null? params) (null? args)) (error "Number of paramaters and arguments is mismatched"))
       ((null? params)                   new-state)
       (else                             (bind-parameters (cdr params) (cdr args) (create-new-binding (car params) (m-value (car args) old-state type) new-state) old-state type)))))
 
 ; class definition handler
 (define m-state-class
   (lambda (statement state next break continue return throw type)
+    ;(display "\n\n\n\n")
+    ;(display (get-class-extends statement))
     (next (create-new-binding (get-class-name statement) (make-class-closure (get-class-extends statement) (get-class-body statement) (get-class-name statement)) state))))
 
 (define get-class-name
@@ -834,6 +929,7 @@
   (lambda (expression state type)
     ;(display expression)
     ;(display "\n\n")
+    ;(display "coming from m-value\n\n")
     (m-state-body
      (get-closure-body (get-funcall-closure expression state type))
      (bind-parameters-generate-state expression state type)
@@ -842,7 +938,7 @@
      continue-error
      (lambda (s v) v)
      (lambda (s v) (error "How did we get here."))
-      (update-type expression state type))))
+     (update-type expression state type))))
 
 
 
