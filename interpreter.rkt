@@ -1057,6 +1057,4 @@
   (lambda (expression state type)
     (m-bool-helper (lambda (a b) (or a b)) expression state type)))
 
-(interpret "test-cases/given-tests/part4-test/test07.txt")
-
-;(interpret "test-cases/given-tests/part4-test/test08.txt")
+(interpret "test-cases/given-tests/part4-test/test08.txt")
