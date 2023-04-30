@@ -608,6 +608,7 @@
 ; assign statement handler
 (define m-state-assign
   (lambda (statement state next break continue return throw type)
+    ;(display statement)
     (if (list? (get-assign-name statement))
         (m-state-assign-this statement state next break continue return throw type)
         (m-state (get-second-operand statement) state (lambda (s) (next (update-binding (get-assign-name statement) (get-assign-value statement state type) s))) break continue return throw type)
@@ -746,8 +747,6 @@
 ; class definition handler
 (define m-state-class
   (lambda (statement state next break continue return throw type)
-    ;(display "\n\n\n\n")
-    ;(display (get-class-extends statement))
     (next (create-new-binding (get-class-name statement) (make-class-closure (get-class-extends statement) (get-class-body statement) (get-class-name statement)) state))))
 
 (define get-class-name
@@ -774,7 +773,6 @@
 (define m-value
   (lambda (expression state type)
     (cond
-      ;((eq? expression 'super)                    (m-value-super expression state))
       ((is-function-expression? expression state)  (m-value-funcall  expression state type))
       ((is-object-expression? expression state)    (m-value-object   expression state type))
       ((is-dot-expression? expression state)       (m-value-dot      expression state type))
@@ -863,34 +861,8 @@
 ; === Dot expression evalutator ===
 (define m-value-dot
   (lambda (expression state type)
-    
-    ;(display "\n\n start")
-    ;(display type)
-    ;(display "\n\n")
-    ;(display  (get-new-type (get-first-operand expression) (get-second-operand expression) state type))
     (get-binding-value (get-second-operand expression) (list (get-instance-environment (m-value (get-first-operand expression) state type)))
                        type)))
-
-
-
-(define (get-new-type name looking-for state previous-type)
-  ;(display previous-type)
-  ;(display (get-class-scope (get-binding-value previous-type state previous-type)))
-  (cond
-    ((and (not (eq? 'super name)) (not (eq? 'this name)))                                                                       previous-type)
-    ((null? previous-type)                                                                                                     (error "Value not found anywhere in object"))
-    ((check-for-binding-in-environment looking-for (get-class-scope (get-binding-value previous-type state previous-type)))  previous-type)
-    (else                                                                                                                          (get-new-type name looking-for state (get-super-type name state previous-type)))))
-  
-#|
-(define (get-super-type name state type)
-  ;(display "incoming =")
-  ;(display type)
-  ;(display (car (get-binding-value type state type)))
-  (if (eq? type (car (get-binding-value name state type)))
-      (car (get-binding-value (car (get-binding-value name state type)) state type))
-      (car (get-binding-value type state type))))
-|#
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -1057,4 +1029,4 @@
   (lambda (expression state type)
     (m-bool-helper (lambda (a b) (or a b)) expression state type)))
 
-(interpret "test-cases/given-tests/part4-test/test08.txt")
+;(interpret "test-cases/given-tests/part4-test/test08.txt")
