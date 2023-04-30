@@ -1,8 +1,6 @@
 #lang racket
 (require "classParser.rkt")
 
-
-
 (define KEYWORD_MATH_OPERATORS '(+ - * / %))
 (define KEYWORD_BOOL_OPERATORS '(&& || !))
 (define KEYWORD_COMPARATORS    '(== != < > <= >=))
@@ -185,11 +183,46 @@
 (define check-for-binding-in-environment
   (lambda (name environment)
     (contains? name (get-environment-names environment))))
- 
+
+; instance closure helper
+(define (edit-instance-environment-from-type instance-environment state type)
+  (myrepeated next-scopes instance-environment (get-count-between-class-inheritance (get-instance-type (get-binding-value 'this state type)) state type)))
+
+(define (get-count-between-class-inheritance instance-type state type)
+  (if (eq? instance-type type)
+      0
+      (+ 1 (get-count-between-class-inheritance (get-class-super-type (get-binding-value instance-type state type)) state type))))
+       
+  
+(define (myrepeated func thing count)
+  (if (zero? count)
+      thing
+      (myrepeated func (func thing) (- count 1))))
+
+(define (update-type expression state type)
+  (cond
+    ((and (not (eq? 'this (get-instance-name-from-funcall expression))) (not (eq? 'super (get-instance-name-from-funcall expression)))) type)
+    ;((check-for-binding-in-environment (get-field-from-funcall expression) (get-class-scope (get-binding-value instance-type state type))) instance-type)
+    (else 'B)))
+     ;update-type expression state (get-super-type instance-type state type) type)))
+
+(define (get-super-type instance-type state type)
+  (get-class-super-type (get-binding-value instance-type state type)))
+
+    
+(define (get-instance-name-from-funcall expression)
+  (cadadr expression))
+
+(define (get-field-from-funcall expression)
+  (car (cddadr expression)))
+
 ; Find the value for a bound name
 (define get-binding-value
   (lambda (name state type)
-    (get-binding-value-cps name state identity)))
+    ;(display (get-binding-value 'this state type))
+    (if (check-for-binding name state type)
+        (get-binding-value-cps name state identity)
+        (get-binding-value-environment name (edit-instance-environment-from-type (get-instance-environment (get-binding-value 'this state type)) state type)))))
 
 (define get-binding-value-cps
   (lambda (name state return)
@@ -572,10 +605,10 @@
 ; assign statement handler
 (define m-state-assign
   (lambda (statement state next break continue return throw type)
-    (if (list? (get-assign-name statement)) (m-state-assign-this statement state next break continue return throw type)
-        (if (check-for-binding (get-assign-name statement) state type)
-            (m-state (get-second-operand statement) state (lambda (s) (next (update-binding (get-assign-name statement) (get-assign-value statement state type) s))) break continue return throw type)
-            (error "Undeclared Variable")))))
+    (if (list? (get-assign-name statement))
+        (m-state-assign-this statement state next break continue return throw type)
+        (m-state (get-second-operand statement) state (lambda (s) (next (update-binding (get-assign-name statement) (get-assign-value statement state type) s))) break continue return throw type)
+          )))
 
 (define m-state-assign-this
   (lambda (statement state next break continue return throw type)
@@ -646,6 +679,7 @@
 ; funciton call handler
 (define m-state-funcall
   (lambda (statement state next break continue return throw type)
+    ;(display statement)
     (m-state-body
      (get-closure-body (get-funcall-closure statement state type))
      (bind-parameters-generate-state statement state type)
@@ -654,7 +688,7 @@
      continue-error
      (lambda (s v) (next (recover-state s state (get-funcall-this-name statement) type)))
      (lambda (s v) (throw (recover-state s state (get-funcall-this-name statement) type) v))
-     type)))
+     (update-type statement state type))))
 
 (define (bind-parameters-generate-state statement state type)
   (bind-parameters
@@ -707,7 +741,7 @@
       ((null? params)                   new-state)
       (else                             (bind-parameters (cdr params) (cdr args) (create-new-binding (car params) (m-value (car args) old-state type) new-state) old-state type)))))
 
-; class defenition handler
+; class definition handler
 (define m-state-class
   (lambda (statement state next break continue return throw type)
     (next (create-new-binding (get-class-name statement) (make-class-closure (get-class-extends statement) (get-class-body statement) (get-class-name statement)) state))))
@@ -731,13 +765,13 @@
 (define m-state-dot
    (lambda (statement state next break continue return throw type)
      (next state)))
-
+     
 ; === Values expression evaluator ===
 (define m-value
   (lambda (expression state type)
     (cond
       ;((eq? expression 'super)                    (m-value-super expression state))
-      ((is-function-expression? expression state)  (m-value-function expression state type))
+      ((is-function-expression? expression state)  (m-value-funcall  expression state type))
       ((is-object-expression? expression state)    (m-value-object   expression state type))
       ((is-dot-expression? expression state)       (m-value-dot      expression state type))
       ((is-bool-expression? expression state type) (m-bool           expression state type))
@@ -796,8 +830,10 @@
       (else                                                         #f))))
 
 ; === Function expression evaluator ===
-(define m-value-function
+(define m-value-funcall
   (lambda (expression state type)
+    ;(display expression)
+    ;(display "\n\n")
     (m-state-body
      (get-closure-body (get-funcall-closure expression state type))
      (bind-parameters-generate-state expression state type)
@@ -806,7 +842,9 @@
      continue-error
      (lambda (s v) v)
      (lambda (s v) (error "How did we get here."))
-      type)))
+      (update-type expression state type))))
+
+
 
 ; === Object expression evalutator ===
 (define m-value-object
@@ -823,7 +861,34 @@
 ; === Dot expression evalutator ===
 (define m-value-dot
   (lambda (expression state type)
-    (get-binding-value (get-second-operand expression) (list (get-instance-environment (m-value (get-first-operand expression) state type))) type)))
+    
+    ;(display "\n\n start")
+    ;(display type)
+    ;(display "\n\n")
+    ;(display  (get-new-type (get-first-operand expression) (get-second-operand expression) state type))
+    (get-binding-value (get-second-operand expression) (list (get-instance-environment (m-value (get-first-operand expression) state type)))
+                       type)))
+
+
+
+(define (get-new-type name looking-for state previous-type)
+  ;(display previous-type)
+  ;(display (get-class-scope (get-binding-value previous-type state previous-type)))
+  (cond
+    ((and (not (eq? 'super name)) (not (eq? 'this name)))                                                                       previous-type)
+    ((null? previous-type)                                                                                                     (error "Value not found anywhere in object"))
+    ((check-for-binding-in-environment looking-for (get-class-scope (get-binding-value previous-type state previous-type)))  previous-type)
+    (else                                                                                                                          (get-new-type name looking-for state (get-super-type name state previous-type)))))
+  
+#|
+(define (get-super-type name state type)
+  ;(display "incoming =")
+  ;(display type)
+  ;(display (car (get-binding-value type state type)))
+  (if (eq? type (car (get-binding-value name state type)))
+      (car (get-binding-value (car (get-binding-value name state type)) state type))
+      (car (get-binding-value type state type))))
+|#
 
 ; === Numerical expression evaluator ===
 (define m-number
@@ -831,11 +896,11 @@
     (cond
       ((is-bool-expression? expression state type)                  (if (m-bool expression state type) 1 0))  ; Cast bool to number
       ((number? expression)                                         expression)
-      ((check-for-binding expression state type)                    (get-binding-value expression state type))
-      ((single-element? expression)                                 (display type) (error "Undeclared Variable"))
+      ;((check-for-binding expression state type)                    (get-binding-value expression state type))
+      ((single-element? expression)                                 (get-binding-value expression state type))
       ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state type))
       ((eq? (get-operator expression) '=)                           (m-number-assign expression state type))
-      ((eq? (get-operator expression) 'funcall)                     (m-number (m-value-function expression state type) state type))
+      ((eq? (get-operator expression) 'funcall)                     (m-number (m-value-funcall expression state type) state type))
       ((eq? (get-operator expression) 'dot)                         (m-number (m-value-dot expression state type) state type))
       (else                                                         (error "This isn't a numerical expression")))))
 
@@ -903,11 +968,11 @@
       ((equal? expression #f)                                       #f)
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
-      ((check-for-binding expression state type)                    (get-binding-value expression state type))
-      ((single-element? expression)                                 (error "Undeclared Variable"))
+      ;((check-for-binding expression state type)                    (get-binding-value expression state type))
+      ((single-element? expression)                                 (get-binding-value expression state type))
       ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state type))
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state type))
-      ((eq? (get-operator expression) 'funcall)                     (m-bool (m-value-function expression state type) state type))
+      ((eq? (get-operator expression) 'funcall)                     (m-bool (m-value-funcall expression state type) state type))
       ((eq? (get-operator expression) 'dot)                         (m-bool (m-value-dot expression state) state type) type)
       (else                                                         (error "This isn't a boolean expression")))))
 
@@ -991,3 +1056,5 @@
     (m-bool-helper (lambda (a b) (or a b)) expression state type)))
 
 (interpret "test-cases/given-tests/part4-test/test07.txt")
+
+;(interpret "test-cases/given-tests/part4-test/test08.txt")
