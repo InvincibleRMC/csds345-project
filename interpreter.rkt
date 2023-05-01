@@ -19,10 +19,10 @@
 ; Interpreter entry point. Reads a file as a program and interprets it, returning the return value of the program
 (provide interpret)
 (define interpret
-  (lambda (filename)
+  (lambda (filename class)
     (m-state-body (parser filename)
                   EMPTY_STATE
-                  (lambda (s) (run-main-method (find-main-closure (get-current-scope (get-current-environment s))) s))
+                  (lambda (s) (run-main-method (get-binding-value-environment MAIN (get-class-scope (get-binding-value class s class))) s class))
                   break-error
                   continue-error
                   (lambda (s v) (error "Returned outside of a function"))
@@ -30,7 +30,7 @@
                   '())))
 
 (define run-main-method
-  (lambda (main-closure state)
+  (lambda (main-closure state class)
     (m-state-body
      (get-closure-body main-closure)
      state
@@ -39,8 +39,9 @@
      continue-error
      (lambda (s v) (interpret-return-output v))
      (lambda (s v) (error "Uncaught exception"))
-     (find-main-class (get-current-scope (get-current-environment state))))))
+    class)))
 
+#|
 (define find-main-class
   (lambda (scope)
     (car (find-main-cps scope identity))))
@@ -64,7 +65,7 @@
       ((equal? class-scope EMPTY_ENVIRONMENT)         (next))
       ((eq? (car (get-scope-names class-scope)) MAIN) (return (car (get-scope-values class-scope))))
       (else                                           (find-main-helper-cps (get-next-scope-elements class-scope) return next)))))
-
+|#
 (define break-error
   (lambda (s) (error "Break outside of loop")))
 
@@ -1029,4 +1030,4 @@
   (lambda (expression state type)
     (m-bool-helper (lambda (a b) (or a b)) expression state type)))
 
-(interpret "test-cases/given-tests/part4-test/test07.5.txt")
+(interpret "test-cases/given-tests/part4-test/test07.5.txt" 'C)
