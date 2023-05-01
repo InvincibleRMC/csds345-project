@@ -203,12 +203,16 @@
 ; should return the class name of where the function being called is
 (define (update-type expression state type)
   (cond
-    ((and (not (eq? 'this (get-instance-name-from-funcall expression))) (not (eq? 'super (get-instance-name-from-funcall expression)))) type)
-    (else (get-superclass-type expression state type))))
+    ((eq? type '()) (error "Field/Method not found"))
+    ((and (eq? 'super (get-instance-name-from-funcall expression))
+          (check-for-binding-in-environment (get-field-from-funcall expression) (get-class-scope (get-binding-value (get-superclass-type expression state type) state type)))) (get-superclass-type expression state type))
+    ((and (eq? 'this (get-instance-name-from-funcall expression))
+          (check-for-binding-in-environment (get-field-from-funcall expression) (get-class-scope (get-binding-value type state type)))) type)
+    (else (update-type expression state (get-superclass-type expression state type)))))
 
 (define get-superclass-type
   (lambda (expression state type)
-    (car (get-binding-value (car (get-funcall-instance-closure expression state type)) state '()))))
+    (get-class-super-type (get-binding-value type state type))))
 #|
 (define (get-super-type instance-type state type)
   (get-class-super-type (get-binding-value instance-type state type)))
@@ -692,7 +696,9 @@
      continue-error
      (lambda (s v) (next (recover-state s state (get-funcall-this-name statement) type)))
      (lambda (s v) (throw (recover-state s state (get-funcall-this-name statement) type) v))
-     (update-type statement state type))))
+     (if (and (not (eq? 'this (get-instance-name-from-funcall statement))) (not (eq? 'super (get-instance-name-from-funcall statement))))
+          type
+     (update-type statement state (get-instance-type (get-binding-value (get-instance-name-from-funcall statement) state type)))))))
 
 (define (bind-parameters-generate-state statement state type)
   (bind-parameters
@@ -843,7 +849,9 @@
      continue-error
      (lambda (s v) v)
      (lambda (s v) (error "How did we get here."))
-     (update-type expression state type))))
+     (if (and (not (eq? 'this (get-instance-name-from-funcall expression))) (not (eq? 'super (get-instance-name-from-funcall expression))))
+          type
+     (update-type expression state (get-instance-type (get-binding-value (get-instance-name-from-funcall expression) state type)))))))
 
 
 
@@ -1030,4 +1038,4 @@
   (lambda (expression state type)
     (m-bool-helper (lambda (a b) (or a b)) expression state type)))
 
-(interpret "test-cases/given-tests/part4-test/test07.5.txt" 'C)
+;(interpret "test-cases/given-tests/part4-test/test07.5.txt" 'C)
