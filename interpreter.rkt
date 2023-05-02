@@ -13,6 +13,9 @@
 (define FALSE 'false)
 (provide FALSE)
 
+(define SUPER 'super)
+(define THIS 'this)
+
 (define MAIN 'main)
 
 ; === Main ===
@@ -162,7 +165,7 @@
 
 ; instance closure helper
 (define (edit-instance-environment-from-type instance-environment state type)
-  (myrepeated next-scopes instance-environment (get-count-between-class-inheritance (get-instance-type (get-binding-value 'this state type)) state type)))
+  (myrepeated next-scopes instance-environment (get-count-between-class-inheritance (get-instance-type (get-binding-value THIS state type)) state type)))
 
 (define (get-count-between-class-inheritance instance-type state type)
   (if (eq? instance-type type)
@@ -171,8 +174,8 @@
 
 (define (edit-instance-front instance-environment state type)
   (append
-  (myfirsts (get-count-between-class-inheritance (get-instance-type (get-binding-value 'this state type)) state type) instance-environment)
-  (myfirsts2 (get-count-between-class-inheritance (get-instance-type (get-binding-value 'this state type)) state type) instance-environment)))
+   (myfirsts (get-count-between-class-inheritance (get-instance-type (get-binding-value THIS state type)) state type) instance-environment)
+   (myfirsts2 (get-count-between-class-inheritance (get-instance-type (get-binding-value THIS state type)) state type) instance-environment)))
   
 (define (myfirsts number lst)
   (if (equal? 0 number)
@@ -195,33 +198,34 @@
 (define (update-type expression state type)
   (cond
     ((eq? type '()) (error "Field/Method not found"))
-    ((and (eq? 'super (get-instance-name-from-funcall expression))
+    ((and (not (is-dot? expression))
+          (check-for-binding-in-environment (get-field-from-funcall expression) (get-class-scope (get-binding-value type state type)))) type)
+    ((and (eq? SUPER (get-instance-name-from-funcall expression))
           (check-for-binding-in-environment (get-field-from-funcall expression) (get-class-scope (get-binding-value (get-superclass-type expression state type) state type)))) (get-superclass-type expression state type))
-    ((and (eq? 'this (get-instance-name-from-funcall expression))
+    ((and (eq? THIS (get-instance-name-from-funcall expression))
           (check-for-binding-in-environment (get-field-from-funcall expression) (get-class-scope (get-binding-value type state type)))) type)
     (else (update-type expression state (get-superclass-type expression state type)))))
 
 (define get-superclass-type
   (lambda (expression state type)
     (get-class-super-type (get-binding-value type state type))))  
-#|
-(define (get-super-type instance-type state type)
-  (get-class-super-type (get-binding-value instance-type state type)))
-|#
     
 (define (get-instance-name-from-funcall expression)
-  (cadadr expression))
+  (if (is-dot? expression)
+      (cadadr expression)
+      THIS))
 
 (define (get-field-from-funcall expression)
-  (car (cddadr expression)))
+  (if (is-dot? expression)
+      (car (cddadr expression))
+      (cadr expression)))
 
 ; Find the value for a bound name
 (define get-binding-value
   (lambda (name state type)
-    ;(display (get-binding-value 'this state type))
     (if (check-for-binding name state type)
         (get-binding-value-cps name state identity)
-        (get-binding-value-environment name (edit-instance-environment-from-type (get-instance-environment (get-binding-value 'this state type)) state type)))))
+        (get-binding-value-environment name (edit-instance-environment-from-type (get-instance-environment (get-binding-value THIS state type)) state type)))))
 
 (define get-binding-value-cps
   (lambda (name state return)
@@ -266,14 +270,14 @@
   (lambda (name value state type)
     (if (check-for-binding name state type)
         (update-binding-cps name value state identity)
-        (update-binding 'this (update-binding-this name value state type) state type))))
+        (update-binding THIS (update-binding-this name value state type) state type))))
 
 (define (update-binding-this name value state type)
   (list
-   (get-instance-type (get-binding-value 'this state type))
+   (get-instance-type (get-binding-value THIS state type))
    (append
-    (edit-instance-front (get-instance-environment (get-binding-value 'this state type)) state type)
-    (update-binding-in-environment-cps name value (edit-instance-environment-from-type (get-instance-environment (get-binding-value 'this state type)) state type) identity))))
+    (edit-instance-front (get-instance-environment (get-binding-value THIS state type)) state type)
+    (update-binding-in-environment-cps name value (edit-instance-environment-from-type (get-instance-environment (get-binding-value THIS state type)) state type) identity))))
 
 (define update-binding-cps
   (lambda (name value state return)
@@ -310,23 +314,40 @@
 ; replace the last environments of outer states with the environments of inner state
 (define recover-state
   (lambda (inner-state outer-state instance-name type)
-    (recover-this instance-name inner-state (recover-state-cps (get-next-environments inner-state)
-                                                               outer-state
-                                                               (- (get-environment-count outer-state) (get-environment-count (get-next-environments  inner-state))) identity)
-                  type)))
+    
+    (if (this-not-changed? instance-name inner-state outer-state type)
+        (recover-super instance-name inner-state (recover-state-help (get-next-environments inner-state)
+                                                                   outer-state
+                                                                   (- (get-environment-count outer-state) (get-environment-count (get-next-environments  inner-state))))
+                      type)
+        (recover-this instance-name inner-state (recover-state-help (get-next-environments inner-state)
+                                                                    outer-state
+                                                                    (- (get-environment-count outer-state) (get-environment-count (get-next-environments  inner-state))))
+                       type)
+        )))
 
-(define recover-state-cps
-  (lambda (inner-state outer-state skip-count return)
+(define recover-state-help
+  (lambda (inner-state outer-state skip-count)
     (cond
-      ((null? inner-state) (return '()))
-      ((> skip-count 0)    (recover-state-cps inner-state (cdr outer-state) (- skip-count 1) (lambda (s) (return (cons (car outer-state) s)))))
-      (else                (return inner-state)))))
+      ((null? inner-state)  '())
+      ((> skip-count 0)    (cons (car outer-state) (recover-state-help inner-state (cdr outer-state) (- skip-count 1))))
+      (else                inner-state))))
+
+(define (this-not-changed? instance-name inner-state outer-state type)
+ (equal? (get-binding-value THIS inner-state type) (get-binding-value instance-name outer-state type)))
 
 (define recover-this
   (lambda (instance-name inner-state merged-state type)
     (if (null? instance-name)
         merged-state
-        (update-binding instance-name (get-binding-value 'this inner-state type) merged-state type))))
+        (update-binding instance-name (get-binding-value THIS inner-state type) merged-state type))))
+
+(define (recover-super instance-name inner-state merged-state type)
+   (if (null? instance-name)
+        merged-state
+        (update-binding instance-name
+                        (get-binding-value SUPER inner-state type)
+                        merged-state type)))
 
 ; === Class helper functions ===
 (define make-class-closure
@@ -576,7 +597,6 @@
   (lambda (statement)
     (caddr statement)))
 
-
 ; var statement handler
 (define m-state-var
   (lambda (statement state next break continue return throw type)
@@ -612,7 +632,6 @@
 ; assign statement handler
 (define m-state-assign
   (lambda (statement state next break continue return throw type)
-    ;(display statement)
     (if (list? (get-assign-name statement))
         (m-state-assign-this statement state next break continue return throw type)
         (m-state (get-second-operand statement) state (lambda (s) (next (update-binding (get-assign-name statement) (get-assign-value statement state type) s type))) break continue return throw type)
@@ -622,16 +641,16 @@
   (lambda (statement state next break continue return throw type)
     (cond
       ((not (eq? (get-operator (get-assign-name statement)) 'dot))       (error "Tried to assign to an expression"))
-      ((not (eq? (get-first-operand (get-assign-name statement)) 'this)) (error "Tried to write to private instance variable"))
+      ((not (eq? (get-first-operand (get-assign-name statement)) THIS)) (error "Tried to write to private instance variable"))
       (else
        (m-state (get-second-operand statement) state
                 (lambda (s) (next (update-binding
-                                   'this
+                                   THIS
                                    (update-instance-environment
-                                    (get-binding-value 'this state type)
+                                    (get-binding-value THIS state type)
                                     (update-binding-cps-scope (get-second-operand (get-assign-name statement))
                                                               (get-assign-value statement state type)
-                                                              (get-instance-environment (get-binding-value 'this state type))
+                                                              (get-instance-environment (get-binding-value THIS state type))
                                                               identity))
                                    state type)))
                 break continue return throw type)))))
@@ -695,7 +714,7 @@
      continue-error
      (lambda (s v) (next (recover-state s state (get-funcall-this-name statement) type)))
      (lambda (s v) (throw (recover-state s state (get-funcall-this-name statement) type) v))
-     (if (and (not (eq? 'this (get-instance-name-from-funcall statement))) (not (eq? 'super (get-instance-name-from-funcall statement))))
+     (if (and (not (eq? THIS (get-instance-name-from-funcall statement))) (not (eq? SUPER (get-instance-name-from-funcall statement))))
          type
          (update-type statement state (get-instance-type (get-binding-value (get-instance-name-from-funcall statement) state type)))))))
 
@@ -704,11 +723,11 @@
    (get-closure-params (get-funcall-closure statement state type))
    (get-funcall-args statement)
    (create-new-binding
-    'super
+    SUPER
     (update-instance-environment (get-funcall-instance-closure statement state type) (next-scopes (get-instance-environment (get-funcall-instance-closure statement state type))))
-    (create-new-binding 'this
-                        (if (or (eq? (get-funcall-this-name statement) 'this) (eq? (get-funcall-this-name statement) 'super))
-                            (get-binding-value 'this state type)
+    (create-new-binding THIS
+                        (if (or (eq? (get-funcall-this-name statement) THIS) (eq? (get-funcall-this-name statement) SUPER))
+                            (get-binding-value THIS state type)
                             (get-funcall-instance-closure statement state type))
                         (add-environment ((get-closure-environment (get-funcall-closure statement state type)) state))))
    state type))
@@ -719,13 +738,15 @@
 
 (define get-funcall-this-name
   (lambda (statement)
-    (if (list? (cadadr statement))
-        '()
-        (cadadr statement))))
+    (if (is-dot? statement)
+        (cadadr statement)
+        THIS)))
 
 (define get-funcall-instance-closure
   (lambda (statement state type)
-        (m-value (cadadr statement) state type)))
+    (if (is-dot? statement)
+        (m-value (cadadr statement) state type)
+        (get-binding-value THIS state type))))
 
 (define (is-dot? statement)
   (and (list? (cadr statement)) (eq? 'dot (caadr statement))))
@@ -797,8 +818,8 @@
 (define is-object-expression?
   (lambda (expression state)
     (or
-     (eq? expression 'this)
-     (eq? expression 'super)
+     (eq? expression THIS)
+     (eq? expression SUPER)
      (and (list? expression) (eq? (get-operator expression) 'new)))))
 
 (define is-dot-expression?
@@ -851,11 +872,9 @@
      continue-error
      (lambda (s v) v)
      (lambda (s v) (error "How did we get here."))
-     (if (and (not (eq? 'this (get-instance-name-from-funcall expression))) (not (eq? 'super (get-instance-name-from-funcall expression))))
+     (if (and (not (eq? THIS (get-instance-name-from-funcall expression))) (not (eq? SUPER (get-instance-name-from-funcall expression))))
          type
          (update-type expression state (get-instance-type (get-binding-value (get-instance-name-from-funcall expression) state type)))))))
-
-
 
 ; === Object expression evalutator ===
 (define m-value-object
@@ -881,7 +900,6 @@
     (cond
       ((is-bool-expression? expression state type)                  (if (m-bool expression state type) 1 0))  ; Cast bool to number
       ((number? expression)                                         expression)
-      ;((check-for-binding expression state type)                    (get-binding-value expression state type))
       ((single-element? expression)                                 (get-binding-value expression state type))
       ((contains? (get-operator expression) KEYWORD_MATH_OPERATORS) (m-number-math-operators expression state type))
       ((eq? (get-operator expression) '=)                           (m-number-assign expression state type))
@@ -953,7 +971,6 @@
       ((equal? expression #f)                                       #f)
       ((equal? expression 'true)                                    #t)
       ((equal? expression 'false)                                   #f)
-      ;((check-for-binding expression state type)                    (get-binding-value expression state type))
       ((single-element? expression)                                 (get-binding-value expression state type))
       ((contains? (get-operator expression) KEYWORD_BOOL_OPERATORS) (m-bool-bool-operators expression state type))
       ((contains? (get-operator expression) KEYWORD_COMPARATORS)    (m-bool-comparators    expression state type))
@@ -1039,5 +1056,3 @@
 (define m-bool-or
   (lambda (expression state type)
     (m-bool-helper (lambda (a b) (or a b)) expression state type)))
-
-(interpret "test-cases/given-tests/part4-test/test08.txt" 'Square)
